@@ -1,0 +1,21 @@
+Generative Adversarial Networks (GANs)
+
+A Generative Adversarial Network, or GAN, is a type of generative deep learning model introduced by Ian Goodfellow and his colleagues in 2014. A GAN consists of two neural networks, called the Generator and the Discriminator, that are trained together in competition with each other.
+
+The Generator Network
+The Generator's job is to create fake data that looks real. It starts with a random noise vector, sampled from a latent space, and transforms that noise into a synthetic output, such as an image. Early in training, the Generator produces obvious, low-quality fakes. As training continues, it learns to produce increasingly realistic outputs.
+
+The Discriminator Network
+The Discriminator's job is to tell the difference between real data and fake data produced by the Generator. It works as a binary classifier, taking an input and predicting whether that input is real or fake. The Discriminator is trained on a mix of real examples from the actual dataset and fake examples produced by the Generator.
+
+Adversarial Training
+The two networks are trained simultaneously in what is called a minimax game. The Generator tries to minimize the Discriminator's ability to correctly classify its outputs as fake, while the Discriminator tries to maximize its accuracy at telling real from fake. As training progresses, the Generator gets better at fooling the Discriminator, and the Discriminator gets better at catching fakes, pushing both networks to improve together. In an ideal case, training reaches a point called Nash equilibrium, where the Generator produces outputs indistinguishable from real data.
+
+Training Challenges
+GANs are notoriously difficult to train. A common problem is mode collapse, where the Generator finds one type of output that reliably fools the Discriminator and keeps producing only that, losing diversity. Another challenge is vanishing gradients, where the Discriminator becomes too good too quickly, leaving the Generator with no useful feedback to improve. Training instability, where the two networks fail to converge and oscillate instead of improving, is also common.
+
+Types of GANs
+A Vanilla GAN is the original, simplest form. A DCGAN, or Deep Convolutional GAN, uses convolutional layers and is better suited for image generation. A Conditional GAN, or cGAN, allows the output to be controlled by a label or condition, such as generating a specific digit or category. A CycleGAN can translate images from one style to another without needing paired training examples, commonly used for style transfer. StyleGAN, developed by NVIDIA, is known for generating highly realistic, high-resolution human faces with fine control over style at different levels of detail.
+
+Applications
+GANs are used for realistic image and art generation, style transfer between images, generating synthetic training data for other machine learning models, super-resolution to enhance image quality, and deepfake generation, which raises significant ethical concerns around misinformation and consent.

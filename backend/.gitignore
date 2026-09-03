@@ -1,0 +1,4 @@
+.env
+venv/
+output.txt
+data/panel_script.json
