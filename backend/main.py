@@ -3,6 +3,8 @@ import json
 import requests
 from urllib.parse import quote
 from dotenv import load_dotenv
+from fastapi import UploadFile, File
+from ingest import extract_text_from_file, build_vector_store
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,6 +41,29 @@ class TopicRequest(BaseModel):
 @app.get("/")
 def read_root():
     return {"status": "ExplainIT backend is alive"}
+
+
+@app.post("/upload-source")
+async def upload_source(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith((".txt", ".pdf")):
+        return {"success": False, "message": "Only .txt and .pdf files are supported."}
+
+    file_bytes = await file.read()
+
+    try:
+        text = extract_text_from_file(file.filename, file_bytes)
+        num_chunks = build_vector_store(text, embeddings)
+    except ValueError as e:
+        return {"success": False, "message": str(e)}
+    except Exception as e:
+        return {"success": False, "message": f"Something went wrong processing this file: {str(e)}"}
+
+    return {
+        "success": True,
+        "filename": file.filename,
+        "chunks_created": num_chunks,
+        "message": f"'{file.filename}' is now the active source document."
+    }
 
 
 @app.post("/generate")
