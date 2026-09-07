@@ -1,6 +1,9 @@
 import os
 import json
 import requests
+import httpx
+import urllib.parse
+from fastapi.responses import RedirectResponse
 from urllib.parse import quote
 from dotenv import load_dotenv
 from fastapi import UploadFile, File
@@ -30,8 +33,15 @@ embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-
 llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.4)
 
 STYLE_SUFFIX = ", premium digital comic book art, gorgeous stunning illustrations, vivid colors, rich cinematic lighting, masterpiece, highly detailed, expressive characters, distinct linework, 8k resolution, no blur, no text, no watermark"
-# Placeholder — you MUST test and tune this before Sunday. See note below.
 GROUNDING_THRESHOLD = 1.0
+
+LINKEDIN_CLIENT_ID = os.environ["LINKEDIN_CLIENT_ID"]
+LINKEDIN_CLIENT_SECRET = os.environ["LINKEDIN_CLIENT_SECRET"]
+LINKEDIN_REDIRECT_URI = "http://localhost:8000/auth/linkedin/callback"
+
+# Temporary in-memory storage for the demo — good enough for a single-user project,
+# not meant to scale to multiple real users.
+linkedin_session = {"access_token": None, "person_urn": None}
 
 
 class TopicRequest(BaseModel):
@@ -41,6 +51,139 @@ class TopicRequest(BaseModel):
 @app.get("/")
 def read_root():
     return {"status": "ExplainIT backend is alive"}
+
+
+@app.get("/auth/linkedin/login")
+def linkedin_login():
+    params = {
+        "response_type": "code",
+        "client_id": LINKEDIN_CLIENT_ID,
+        "redirect_uri": LINKEDIN_REDIRECT_URI,
+        "scope": "openid profile w_member_social",
+    }
+    auth_url = "https://www.linkedin.com/oauth/v2/authorization?" + urllib.parse.urlencode(params)
+    return RedirectResponse(auth_url)
+
+
+@app.get("/auth/linkedin/callback")
+async def linkedin_callback(code: str):
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            "https://www.linkedin.com/oauth/v2/accessToken",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": LINKEDIN_REDIRECT_URI,
+                "client_id": LINKEDIN_CLIENT_ID,
+                "client_secret": LINKEDIN_CLIENT_SECRET,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        token_data = token_response.json()
+
+        if "access_token" not in token_data:
+            return {"error": "Token exchange failed", "details": token_data}
+
+        access_token = token_data["access_token"]
+        linkedin_session["access_token"] = access_token
+
+        userinfo_response = await client.get(
+            "https://api.linkedin.com/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        userinfo = userinfo_response.json()
+        linkedin_session["person_urn"] = f"urn:li:person:{userinfo['sub']}"
+
+    return {
+        "status": "LinkedIn connected successfully",
+        "name": userinfo.get("name"),
+        "person_urn": linkedin_session["person_urn"],
+    }
+
+
+@app.post("/linkedin/post-panel")
+async def post_panel_to_linkedin(panel_number: int, caption: str):
+    if not linkedin_session["access_token"]:
+        return {"success": False, "message": "Not connected to LinkedIn yet. Visit /auth/linkedin/login first."}
+
+    access_token = linkedin_session["access_token"]
+    person_urn = linkedin_session["person_urn"]
+    image_path = f"data/images/panel_{panel_number}.png"
+
+    if not os.path.exists(image_path):
+        return {"success": False, "message": f"No image found for panel {panel_number}."}
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0",
+    }
+
+    async with httpx.AsyncClient() as client:
+        # Step 1 — Register the upload, get back a one-time upload URL + asset URN
+        register_response = await client.post(
+            "https://api.linkedin.com/v2/assets?action=registerUpload",
+            headers=headers,
+            json={
+                "registerUploadRequest": {
+                    "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+                    "owner": person_urn,
+                    "serviceRelationships": [
+                        {"relationshipType": "OWNER", "identifier": "urn:li:userGeneratedContent"}
+                    ],
+                }
+            },
+        )
+        register_data = register_response.json()
+
+        if "value" not in register_data:
+            return {"success": False, "message": "Failed to register upload", "details": register_data}
+
+        upload_url = register_data["value"]["uploadMechanism"]["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]["uploadUrl"]
+        asset_urn = register_data["value"]["asset"]
+
+        # Step 2 — Push the actual image bytes to that upload URL
+        with open(image_path, "rb") as img_file:
+            image_bytes = img_file.read()
+
+        upload_response = await client.put(
+            upload_url,
+            headers={"Authorization": f"Bearer {access_token}"},
+            content=image_bytes,
+        )
+
+        if upload_response.status_code not in (200, 201):
+            return {"success": False, "message": "Image upload to LinkedIn failed", "status": upload_response.status_code}
+
+        # Step 3 — Create the actual post, referencing the uploaded asset
+        post_response = await client.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            headers=headers,
+            json={
+                "author": person_urn,
+                "lifecycleState": "PUBLISHED",
+                "specificContent": {
+                    "com.linkedin.ugc.ShareContent": {
+                        "shareCommentary": {"text": caption},
+                        "shareMediaCategory": "IMAGE",
+                        "media": [
+                            {
+                                "status": "READY",
+                                "media": asset_urn,
+                            }
+                        ],
+                    }
+                },
+                "visibility": {
+                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+                },
+            },
+        )
+
+        if post_response.status_code not in (200, 201):
+            return {"success": False, "message": "Post creation failed", "status": post_response.status_code, "details": post_response.text}
+
+    return {"success": True, "message": "Posted to LinkedIn successfully."}
 
 
 @app.post("/upload-source")
@@ -70,12 +213,9 @@ async def upload_source(file: UploadFile = File(...)):
 def generate_comic(request: TopicRequest):
     topic = request.topic
 
-    # 1. Retrieve grounded facts, WITH similarity scores this time
     vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
     results_with_scores = vector_store.similarity_search_with_score(topic, k=4)
 
-    # 2. Grounding check — refuse to generate if the topic isn't actually covered
-    #    by the source material, instead of letting the AI make something up.
     if not results_with_scores or results_with_scores[0][1] > GROUNDING_THRESHOLD:
         return {
             "grounded": False,
@@ -84,7 +224,6 @@ def generate_comic(request: TopicRequest):
 
     grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
 
-    # 3. Generate the panel script
     prompt = f"""You are writing a short educational visual guide explaining a topic to a beginner.
 
 Use ONLY the facts below. Do not add any information that is not directly supported by this context.
@@ -125,7 +264,6 @@ Return ONLY valid JSON, no markdown formatting, no code fences, no extra text. E
         cleaned = raw_output.strip().strip("```json").strip("```").strip()
         script = json.loads(cleaned)
 
-    # 4. Generate an image for each panel — via Pollinations.ai, no key, no quota
     os.makedirs("data/images", exist_ok=True)
     for panel in script["panels"]:
         panel_num = panel["panel_number"]

@@ -17,6 +17,10 @@ export default function Hero() {
   const [errorMessage, setErrorMessage] = useState('');
   const [loadingIndex, setLoadingIndex] = useState(0);
 
+  const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle', 'uploading', 'success', 'error'
+  const [uploadedFilename, setUploadedFilename] = useState('');
+  const [uploadMessage, setUploadMessage] = useState('');
+
   // Cycle loading messages
   useEffect(() => {
     let interval;
@@ -63,6 +67,41 @@ export default function Hero() {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus('uploading');
+    setUploadMessage('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:8000/upload-source', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setUploadStatus('success');
+        setUploadedFilename(data.filename || file.name);
+        setUploadMessage(data.message || '');
+      } else {
+        setUploadStatus('error');
+        setUploadMessage(data.message || "Upload failed, try again");
+      }
+    } catch (err) {
+      setUploadStatus('error');
+      setUploadMessage("Upload failed, try again");
+    }
+    
+    // Reset file input value so same file can be uploaded again if needed
+    e.target.value = '';
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -107,24 +146,77 @@ export default function Hero() {
       </motion.p>
 
       <motion.div 
-        className="w-full max-w-xl mx-auto pt-10 flex flex-col sm:flex-row gap-4"
+        className="w-full max-w-xl mx-auto pt-10 flex flex-col gap-8"
         variants={itemVariants}
       >
-        <input
-          type="text"
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          placeholder="Try: How GANs work"
-          className="flex-1 bg-surface text-text-primary placeholder-text-muted border border-border-dark rounded-xl px-6 py-4 text-lg focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent focus:shadow-[0_0_15px_rgba(232,163,61,0.2)] transition-all"
-        />
-        <motion.button
-          onClick={handleGenerate}
-          whileHover={{ scale: 1.02, filter: "brightness(1.1)" }}
-          whileTap={{ scale: 0.98 }}
-          className="bg-accent text-charcoal font-medium text-lg px-8 py-4 rounded-xl cursor-pointer transition-colors"
-        >
-          Generate
-        </motion.button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="Try: How GANs work"
+            className="flex-1 bg-surface text-text-primary placeholder-text-muted border border-border-dark rounded-xl px-6 py-4 text-lg focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent focus:shadow-[0_0_15px_rgba(232,163,61,0.2)] transition-all"
+          />
+          <motion.button
+            onClick={handleGenerate}
+            whileHover={{ scale: 1.02, filter: "brightness(1.1)" }}
+            whileTap={{ scale: 0.98 }}
+            className="bg-accent text-charcoal font-medium text-lg px-8 py-4 rounded-xl cursor-pointer transition-colors"
+          >
+            Generate
+          </motion.button>
+        </div>
+
+        {/* Upload Section */}
+        <div className="flex flex-col items-center gap-4 border-t border-border-dark pt-6 w-full relative">
+          <div className="absolute -top-3 px-4 bg-charcoal text-xs text-text-muted uppercase tracking-wider">or</div>
+          
+          <p className="text-sm text-text-muted font-light mt-2">Ground it in your own notes instead</p>
+          
+          <div className="flex flex-col items-center gap-2">
+            <label className={`
+              relative flex items-center justify-center gap-2 px-5 py-2.5 
+              bg-surface border border-border-dark rounded-lg 
+              transition-all duration-300 text-sm shadow-sm
+              ${uploadStatus === 'uploading' ? 'opacity-80 cursor-wait' : 'hover:border-accent/60 hover:text-text-primary text-text-muted cursor-pointer hover:shadow-[0_0_10px_rgba(232,163,61,0.1)]'}
+            `}>
+              <input 
+                type="file" 
+                className="hidden" 
+                accept=".txt,.pdf"
+                onChange={handleFileUpload}
+                disabled={uploadStatus === 'uploading'}
+              />
+              
+              {uploadStatus === 'uploading' ? (
+                <>
+                  <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                  <span className="text-text-primary">Uploading...</span>
+                </>
+              ) : (
+                <span>Upload a .txt or .pdf file</span>
+              )}
+            </label>
+
+            {uploadStatus === 'success' && (
+              <motion.p 
+                initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                className="text-accent text-xs font-medium tracking-wide mt-2"
+              >
+                ✓ {uploadedFilename} is now your source — try a topic from it above.
+              </motion.p>
+            )}
+            
+            {uploadStatus === 'error' && (
+              <motion.p 
+                initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                className="text-red-400/80 text-xs font-light mt-2"
+              >
+                {uploadMessage}
+              </motion.p>
+            )}
+          </div>
+        </div>
       </motion.div>
     </motion.div>
   );
