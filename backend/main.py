@@ -3,7 +3,7 @@ import json
 import requests
 import httpx
 import urllib.parse
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
 from dotenv import load_dotenv
 from fastapi import UploadFile, File
@@ -41,7 +41,7 @@ LINKEDIN_REDIRECT_URI = "http://localhost:8000/auth/linkedin/callback"
 
 # Temporary in-memory storage for the demo — good enough for a single-user project,
 # not meant to scale to multiple real users.
-linkedin_session = {"access_token": None, "person_urn": None}
+linkedin_session = {"access_token": None, "person_urn": None, "name": None}
 
 
 class TopicRequest(BaseModel):
@@ -82,7 +82,7 @@ async def linkedin_callback(code: str):
         token_data = token_response.json()
 
         if "access_token" not in token_data:
-            return {"error": "Token exchange failed", "details": token_data}
+            return HTMLResponse(f"<html><body><p>Login failed: {token_data}</p></body></html>")
 
         access_token = token_data["access_token"]
         linkedin_session["access_token"] = access_token
@@ -93,12 +93,23 @@ async def linkedin_callback(code: str):
         )
         userinfo = userinfo_response.json()
         linkedin_session["person_urn"] = f"urn:li:person:{userinfo['sub']}"
+        linkedin_session["name"] = userinfo.get("name")
 
-    return {
-        "status": "LinkedIn connected successfully",
-        "name": userinfo.get("name"),
-        "person_urn": linkedin_session["person_urn"],
-    }
+    # This runs inside a popup window opened by the frontend — close it automatically
+    # once the login succeeds, so the user lands back in the app, not on a raw JSON page.
+    return HTMLResponse("""
+        <html><body style="font-family: sans-serif; text-align: center; padding-top: 40px;">
+        <p>LinkedIn connected. This window will close automatically...</p>
+        <script>window.close();</script>
+        </body></html>
+    """)
+
+
+@app.get("/auth/linkedin/status")
+def linkedin_status():
+    if linkedin_session["access_token"]:
+        return {"connected": True, "name": linkedin_session["name"]}
+    return {"connected": False}
 
 
 @app.post("/linkedin/post-panel")
@@ -120,7 +131,6 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
     }
 
     async with httpx.AsyncClient() as client:
-        # Step 1 — Register the upload, get back a one-time upload URL + asset URN
         register_response = await client.post(
             "https://api.linkedin.com/v2/assets?action=registerUpload",
             headers=headers,
@@ -142,7 +152,6 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
         upload_url = register_data["value"]["uploadMechanism"]["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]["uploadUrl"]
         asset_urn = register_data["value"]["asset"]
 
-        # Step 2 — Push the actual image bytes to that upload URL
         with open(image_path, "rb") as img_file:
             image_bytes = img_file.read()
 
@@ -155,7 +164,6 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
         if upload_response.status_code not in (200, 201):
             return {"success": False, "message": "Image upload to LinkedIn failed", "status": upload_response.status_code}
 
-        # Step 3 — Create the actual post, referencing the uploaded asset
         post_response = await client.post(
             "https://api.linkedin.com/v2/ugcPosts",
             headers=headers,
