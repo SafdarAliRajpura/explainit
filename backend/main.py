@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import requests
 import httpx
 import urllib.parse
@@ -32,7 +33,7 @@ app.mount("/images", StaticFiles(directory="data/images"), name="images")
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.4)
 
-STYLE_SUFFIX = ", premium digital comic book art, gorgeous stunning illustrations, vivid colors, rich cinematic lighting, masterpiece, highly detailed, expressive characters, distinct linework, 8k resolution, no blur, no text, no watermark"
+STYLE_SUFFIX = ", editorial graphic novel art style, rich cinematic lighting, vibrant color palette, clear focal subject, crisp linework, highly detailed masterpiece, no blur, no text, no watermark, no logos"
 GROUNDING_THRESHOLD = 1.0
 
 LINKEDIN_CLIENT_ID = os.environ["LINKEDIN_CLIENT_ID"]
@@ -232,27 +233,43 @@ def generate_comic(request: TopicRequest):
 
     grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
 
-    prompt = f"""You are writing a short educational visual guide explaining a topic to a beginner.
-
-Use ONLY the facts below. Do not add any information that is not directly supported by this context.
+    prompt = f"""You are an elite editorial comic art director and science/tech communicator.
+Your task is to write a 3-panel illusterated explainer script grounded strictly in the provided context.
 
 CONTEXT:
 {grounded_context}
 
-Write a 3-panel visual script explaining: {topic}
+TOPIC TO EXPLAIN:
+{topic}
 
-IMPORTANT for image generation: Each panel's `scene_description` MUST describe a beautiful, highly attractive, and conceptual illustration that perfectly represents the specific text of that panel. 
-Do NOT force any recurring characters or mascots (like robots) into the scenes. Instead, focus on rich visual metaphors, cinematic environments, and clear subject matter that directly matches the educational content of the caption.
+PANEL SCRIPT REQUIREMENTS:
+1. Grounding: Use ONLY facts directly supported by the context above.
+2. Structure: Break down the explanation into 3 progressive panels:
+   - Panel 1: The Core Concept / Setup
+   - Panel 2: The Core Mechanism / Action / Conflict
+   - Panel 3: The Result / Breakthrough / Impact
+3. Caption: Clear, engaging, natural human tone (1-2 sentences).
 
-Every scene_description should describe a distinct, premium, and stunning visual.
-Return ONLY valid JSON, no markdown formatting, no code fences, no extra text. Exactly this shape:
+CRITICAL VISUAL METAPHOR RULES FOR IMAGE GENERATION:
+Text-to-image models (like Flux) CANNOT visualize abstract concepts (such as "deep learning", "neural network", "latent space", "algorithm", "data points"). When given abstract words, they fail and generate generic sci-fi robots or blue digital grids.
 
+You MUST convert every panel into a CONCRETE, TANGIBLE PHYSICAL METAPHOR or direct real-world subject:
+- FOR MACHINE LEARNING / TECHNICAL TOPICS (e.g. GANs):
+  * For the Generator: Describe an art forger or counterfeit painter in a sunlit classical workshop, mixing pigments and creating paintings on a wooden easel.
+  * For the Discriminator: Describe a sharp-eyed museum curator or detective with a brass magnifying glass inspecting canvas texture under a warm spotlight.
+  * For the Training Loop: Describe the painter and detective in a duel of wits, comparing real museum masterpieces with the forged paintings side by side.
+- FOR BIOLOGY / NATURE: Describe physical biological worlds, lush micro-ecosystems, water droplets, sunlight breaking through green leaves.
+- FOR SCIENCE / PHYSICS: Describe physical astronomy, observatories, brass instruments, mechanical gear systems, or dramatic physical forces.
+- NEVER include robots, cyborgs, glowing floating numbers, abstract holographic screens, or cybernetic tropes unless the prompt is literally about humanoid robots.
+- Each `image_prompt` MUST be a rich, tangible physical scene: clearly describe the Main Subject + Physical Action + Specific Setting/Environment + Lighting + Camera Angle.
+
+Return ONLY valid JSON with no markdown formatting and no code fences. Exactly this JSON schema:
 {{
   "panels": [
     {{
       "panel_number": 1,
-      "caption": "short, simple explanation text for this panel, one or two sentences",
-      "scene_description": "a highly detailed visual description of the attractive, conceptual image for this panel"
+      "caption": "1-2 sentences clearly explaining the concept for this panel.",
+      "image_prompt": "Concrete physical scene description tailored for the image model, using tangible subjects, actions, lighting, and metaphor."
     }}
   ]
 }}
@@ -275,9 +292,14 @@ Return ONLY valid JSON, no markdown formatting, no code fences, no extra text. E
     os.makedirs("data/images", exist_ok=True)
     for panel in script["panels"]:
         panel_num = panel["panel_number"]
-        image_prompt = panel["scene_description"] + STYLE_SUFFIX
+        # Use image_prompt if provided, fallback to scene_description
+        raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
+        image_prompt = raw_prompt.strip() + STYLE_SUFFIX
         encoded_prompt = quote(image_prompt)
-        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&model=flux&seed=42&nologo=true"
+
+        # Dynamic random seed per panel so images have distinct, fresh compositions
+        random_seed = random.randint(1, 1000000)
+        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&model=flux&seed={random_seed}&nologo=true"
 
         img_response = requests.get(image_gen_url, timeout=60)
         img_response.raise_for_status()
