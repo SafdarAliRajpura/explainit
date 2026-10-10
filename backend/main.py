@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import random
 import requests
@@ -7,9 +8,8 @@ import urllib.parse
 from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
 from dotenv import load_dotenv
-from fastapi import UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from ingest import extract_text_from_file, build_vector_store
-from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -295,20 +295,81 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         # Use image_prompt if provided, fallback to scene_description
         raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
         image_prompt = raw_prompt.strip() + STYLE_SUFFIX
-        encoded_prompt = quote(image_prompt)
+        # Truncate to prevent 414 URI Too Long or 400 Bad Request
+        safe_prompt = image_prompt[:800]
+        encoded_prompt = quote(safe_prompt)
 
         # Dynamic random seed per panel so images have distinct, fresh compositions
         random_seed = random.randint(1, 1000000)
-        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&model=flux&seed={random_seed}&nologo=true"
+        # Removed `&model=flux` to fallback to default free model due to 402 Payment Required errors
+        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
 
-        img_response = requests.get(image_gen_url, timeout=60)
-        img_response.raise_for_status()
+        try:
+            # Pollinations often blocks requests without a User-Agent or if requests are too rapid
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0"}
+            img_response = requests.get(image_gen_url, headers=headers, timeout=60)
+            img_response.raise_for_status()
 
-        output_path = f"data/images/panel_{panel_num}.png"
-        with open(output_path, "wb") as f:
-            f.write(img_response.content)
+            output_path = f"data/images/panel_{panel_num}.png"
+            with open(output_path, "wb") as f:
+                f.write(img_response.content)
 
-        panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
+            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
+        except Exception as e:
+            print(f"Error generating image for panel {panel_num}: {e}")
+            # Ensure the frontend doesn't crash on connection error if image gen fails
+            panel["image_url"] = f"https://placehold.co/1024x1024/0B0C0E/E8A33D.png?text=Generation+Failed"
+        
+        # Add a delay between panel image generations to prevent rate limiting
+        time.sleep(1.5)
 
     script["grounded"] = True
     return script
+
+
+class QuizRequest(BaseModel):
+    topic: str
+
+@app.post("/generate-quiz")
+def generate_quiz(request: QuizRequest):
+    topic = request.topic
+
+    vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
+    results_with_scores = vector_store.similarity_search_with_score(topic, k=4)
+
+    if not results_with_scores or results_with_scores[0][1] > GROUNDING_THRESHOLD:
+        raise HTTPException(status_code=400, detail="Not enough grounded source material.")
+
+    grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
+
+    prompt = f"""You are an expert educator. Create a 3-question multiple-choice quiz about "{topic}" based ONLY on this context:
+{grounded_context}
+
+Return ONLY valid JSON in this exact format:
+{{
+  "questions": [
+    {{
+      "question": "What is...?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_index": 0,
+      "explanation": "Short explanation of why the correct option is the answer."
+    }}
+  ]
+}}
+"""
+    response = llm.invoke(prompt)
+    raw_output = response.content
+
+    if isinstance(raw_output, list):
+        raw_output = "".join(block["text"] for block in raw_output if isinstance(block, dict) and block.get("type") == "text")
+
+    try:
+        quiz_data = json.loads(raw_output)
+    except json.JSONDecodeError:
+        cleaned = raw_output.strip().strip("```json").strip("```").strip()
+        try:
+            quiz_data = json.loads(cleaned)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Failed to parse quiz JSON from LLM.")
+
+    return quiz_data

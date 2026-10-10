@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Quiz from './Quiz';
 
 const ChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -16,6 +17,7 @@ const ChevronRight = () => (
 export default function ComicReader({ panels, topic, onReset }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [showQuiz, setShowQuiz] = useState(false);
 
   // LinkedIn State
   const [linkedinConnected, setLinkedinConnected] = useState(false);
@@ -155,9 +157,37 @@ export default function ComicReader({ panels, topic, onReset }) {
 
   const currentPanel = panels[currentIndex];
 
+  // ── Quiz view ───────────────────────────────────────────────────────────────
+  if (showQuiz) {
+    return (
+      <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
+        {/* Reuse the same top bar so the header stays consistent */}
+        <div className="w-full flex justify-between items-start mb-8">
+          <div className="inline-flex items-center gap-3 px-1.5 py-1.5 rounded-full border border-border-dark bg-surface shadow-sm">
+            <div className="flex items-center gap-2.5 bg-charcoal px-4 py-1.5 rounded-full border border-border-dark/50 shadow-inner">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-50"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent shadow-[0_0_8px_rgba(232,163,61,0.8)]"></span>
+              </span>
+              <span className="text-[10px] tracking-[0.2em] uppercase text-text-primary font-semibold">Verified Source</span>
+            </div>
+            <span className="text-sm text-text-muted font-light pr-4">
+              Topic: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
+            </span>
+          </div>
+        </div>
+        <Quiz
+          topic={topic}
+          onBackToComic={() => setShowQuiz(false)}
+          onReset={onReset}
+        />
+      </div>
+    );
+  }
+
+  // ── Comic reader view ───────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
-      
       {/* Top Header */}
       <div className="w-full flex justify-between items-start mb-8">
         {/* Verified Source Indicator */}
@@ -325,19 +355,31 @@ export default function ComicReader({ panels, topic, onReset }) {
               </div>
             </div>
 
-            <div className="pt-8 border-t border-border-dark flex">
-              <motion.button 
+            <div className="pt-8 border-t border-border-dark flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* PRIMARY — Test Yourself */}
+              <motion.button
+                onClick={() => setShowQuiz(true)}
+                whileHover={{ scale: 1.02, filter: 'brightness(1.1)' }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center justify-center gap-2 bg-accent text-charcoal font-medium text-sm px-8 py-3.5 rounded-xl cursor-pointer transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Test Yourself
+              </motion.button>
+
+              {/* GHOST — Explain another topic */}
+              <motion.button
                 onClick={onReset}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative flex items-center justify-center gap-2.5 w-full md:w-auto px-8 py-3.5 border border-border-dark bg-surface text-text-muted rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 hover:shadow-[0_0_15px_rgba(232,163,61,0.15)] transition-all duration-300"
+                className="group relative flex items-center justify-center gap-2.5 px-8 py-3.5 border border-border-dark bg-surface text-text-muted rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 hover:shadow-[0_0_15px_rgba(232,163,61,0.15)] transition-all duration-300"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-                
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-accent group-hover:rotate-12 transition-transform duration-300">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                 </svg>
-
                 <span className="text-sm font-medium tracking-wide relative z-10 group-hover:text-text-primary transition-colors duration-300">Explain another topic</span>
               </motion.button>
             </div>
