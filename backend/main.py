@@ -295,19 +295,23 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         # Use image_prompt if provided, fallback to scene_description
         raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
         image_prompt = raw_prompt.strip() + STYLE_SUFFIX
-        # Truncate to prevent 414 URI Too Long or 400 Bad Request
-        safe_prompt = image_prompt[:800]
-        encoded_prompt = quote(safe_prompt)
 
         # Dynamic random seed per panel so images have distinct, fresh compositions
         random_seed = random.randint(1, 1000000)
-        # Removed `&model=flux` to fallback to default free model due to 402 Payment Required errors
-        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
 
         try:
-            # Pollinations often blocks requests without a User-Agent or if requests are too rapid
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0"}
-            img_response = requests.get(image_gen_url, headers=headers, timeout=60)
+            # Using POST is much more reliable than GET because it avoids URI Too Long (414) 
+            # and complex URL encoding issues with long prompts.
+            payload = {
+                "prompt": image_prompt,
+                "width": 1024,
+                "height": 1024,
+                "seed": random_seed,
+                "nologo": True
+            }
+            headers = {"User-Agent": "ExplainIT/1.0"}
+            
+            img_response = requests.post("https://image.pollinations.ai/", json=payload, headers=headers, timeout=60)
             img_response.raise_for_status()
 
             output_path = f"data/images/panel_{panel_num}.png"
@@ -320,8 +324,8 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
             # Ensure the frontend doesn't crash on connection error if image gen fails
             panel["image_url"] = f"https://placehold.co/1024x1024/0B0C0E/E8A33D.png?text=Generation+Failed"
         
-        # Add a delay between panel image generations to prevent rate limiting
-        time.sleep(1.5)
+        # Add delay between panel image generations to prevent rate limiting
+        time.sleep(3.5)
 
     script["grounded"] = True
     return script
