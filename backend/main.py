@@ -31,9 +31,36 @@ app.add_middleware(
 app.mount("/images", StaticFiles(directory="data/images"), name="images")
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.4)
 
-STYLE_SUFFIX = ", editorial graphic novel art style, rich cinematic lighting, vibrant color palette, clear focal subject, crisp linework, highly detailed masterpiece, no blur, no text, no watermark, no logos"
+def invoke_llm_with_retry(prompt: str, max_retries: int = 3):
+    """
+    Invokes Google Gemini with automatic retries, exponential backoff,
+    and automatic fallback across models to handle 503 high-demand spikes.
+    """
+    candidate_models = ["gemini-3.8-flash", "gemini-3.5-flash"]
+    last_error = None
+
+    for model_name in candidate_models:
+        for attempt in range(max_retries):
+            try:
+                model = ChatGoogleGenerativeAI(model=model_name, temperature=0.4)
+                return model.invoke(prompt)
+            except Exception as e:
+                last_error = e
+                err_msg = str(e)
+                # Check for transient capacity / demand spikes
+                if any(code in err_msg for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
+                    backoff = 2 * (attempt + 1)
+                    print(f"[{model_name}] Transient error (attempt {attempt + 1}/{max_retries}): {e}. Waiting {backoff}s...")
+                    time.sleep(backoff)
+                else:
+                    # Model not available or non-transient error, try next candidate model
+                    print(f"[{model_name}] Encountered non-transient error: {e}. Switching to alternative model...")
+                    break
+
+    raise last_error
+
+STYLE_SUFFIX = ", realistic editorial illustration, natural materials and believable proportions, carefully composed documentary-style scene, soft natural cinematic lighting, restrained vibrant colors, clear focal subject, fine realistic detail, no text, no watermark, no logos"
 GROUNDING_THRESHOLD = 1.0
 
 LINKEDIN_CLIENT_ID = os.environ["LINKEDIN_CLIENT_ID"]
@@ -233,8 +260,8 @@ def generate_comic(request: TopicRequest):
 
     grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
 
-    prompt = f"""You are an elite editorial comic art director and science/tech communicator.
-Your task is to write a 3-panel illusterated explainer script grounded strictly in the provided context.
+    prompt = f"""You are a clear, visually literate science communicator creating a grounded three-panel visual explainer.
+    Write concise explanations and image directions for realistic editorial illustrations, not comic-book or fantasy art.
 
 CONTEXT:
 {grounded_context}
@@ -250,18 +277,15 @@ PANEL SCRIPT REQUIREMENTS:
    - Panel 3: The Result / Breakthrough / Impact
 3. Caption: Clear, engaging, natural human tone (1-2 sentences).
 
-CRITICAL VISUAL METAPHOR RULES FOR IMAGE GENERATION:
-Text-to-image models (like Flux) CANNOT visualize abstract concepts (such as "deep learning", "neural network", "latent space", "algorithm", "data points"). When given abstract words, they fail and generate generic sci-fi robots or blue digital grids.
+IMAGE DIRECTION REQUIREMENTS:
+1. Topic match: Every image_prompt must make the specific topic and that panel's point recognizable at a glance. Use the actual named entities, tools, materials, and actions from the topic, caption, and context; do not substitute unrelated stock metaphors or generic technology imagery.
+2. Show the process: Depict the key subject performing the action described in the caption, and make important relationships or information flow visible using concrete objects and their arrangement.
+3. Metaphors are optional: Prefer a direct, plausible depiction of the real process. Use a physical analogy only when it maps clearly to the process and does not replace or contradict the topic. Never force the same metaphor onto unrelated subjects.
+4. Panel progression: Keep a coherent visual setting and subject across panels where appropriate, while changing the action/composition to show setup, mechanism, and outcome.
+5. Specificity: Describe the main subject, its action, relevant topic-specific objects, setting, composition/camera angle, and lighting. Avoid vague descriptions that could illustrate many unrelated topics.
+6. Style and exclusions: Use believable, realistic editorial illustration with natural-looking forms and materials. Avoid comic-book linework, fantasy, generic sci-fi corridors, glowing grids, floating numbers, robots, or holograms unless those elements are directly relevant to the topic and supported by context. Do not request readable text in the image.
 
-You MUST convert every panel into a CONCRETE, TANGIBLE PHYSICAL METAPHOR or direct real-world subject:
-- FOR MACHINE LEARNING / TECHNICAL TOPICS (e.g. GANs):
-  * For the Generator: Describe an art forger or counterfeit painter in a sunlit classical workshop, mixing pigments and creating paintings on a wooden easel.
-  * For the Discriminator: Describe a sharp-eyed museum curator or detective with a brass magnifying glass inspecting canvas texture under a warm spotlight.
-  * For the Training Loop: Describe the painter and detective in a duel of wits, comparing real museum masterpieces with the forged paintings side by side.
-- FOR BIOLOGY / NATURE: Describe physical biological worlds, lush micro-ecosystems, water droplets, sunlight breaking through green leaves.
-- FOR SCIENCE / PHYSICS: Describe physical astronomy, observatories, brass instruments, mechanical gear systems, or dramatic physical forces.
-- NEVER include robots, cyborgs, glowing floating numbers, abstract holographic screens, or cybernetic tropes unless the prompt is literally about humanoid robots.
-- Each `image_prompt` MUST be a rich, tangible physical scene: clearly describe the Main Subject + Physical Action + Specific Setting/Environment + Lighting + Camera Angle.
+For example, when explaining retrieval-augmented generation, a retrieval-stage image should visibly show a user's question being matched to relevant source documents and those selected passages being passed onward to a language model, if those steps are supported by the context. Do not depict an unrelated abstract data tunnel.
 
 Return ONLY valid JSON with no markdown formatting and no code fences. Exactly this JSON schema:
 {{
@@ -269,12 +293,19 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
     {{
       "panel_number": 1,
       "caption": "1-2 sentences clearly explaining the concept for this panel.",
-      "image_prompt": "Concrete physical scene description tailored for the image model, using tangible subjects, actions, lighting, and metaphor."
+      "image_prompt": "A realistic, specific scene that visibly represents this panel's topic and action, grounded in the caption and context."
     }}
   ]
 }}
 """
-    response = llm.invoke(prompt)
+    try:
+        response = invoke_llm_with_retry(prompt)
+    except Exception as e:
+        print(f"Failed to generate comic script after retries: {e}")
+        return {
+            "grounded": False,
+            "message": "The AI service is experiencing high traffic spikes right now. Please try again in a few moments."
+        }
     raw_output = response.content
 
     if isinstance(raw_output, list):
@@ -361,7 +392,14 @@ Return ONLY valid JSON in this exact format:
   ]
 }}
 """
-    response = llm.invoke(prompt)
+    try:
+        response = invoke_llm_with_retry(prompt)
+    except Exception as e:
+        print(f"Failed to generate quiz after retries: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="The AI service is experiencing high traffic spikes right now. Please try again in a few moments."
+        )
     raw_output = response.content
 
     if isinstance(raw_output, list):
