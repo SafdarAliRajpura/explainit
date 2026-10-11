@@ -260,8 +260,8 @@ def generate_comic(request: TopicRequest):
 
     grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
 
-    prompt = f"""You are a clear, visually literate science communicator creating a grounded three-panel visual explainer.
-    Write concise explanations and image directions for realistic editorial illustrations, not comic-book or fantasy art.
+    prompt = f"""You are an expert educational infographic and visual storyteller.
+Your mission is to generate a 3-panel visual explainer script for the topic: "{topic}".
 
 CONTEXT:
 {grounded_context}
@@ -270,22 +270,24 @@ TOPIC TO EXPLAIN:
 {topic}
 
 PANEL SCRIPT REQUIREMENTS:
-1. Grounding: Use ONLY facts directly supported by the context above.
-2. Structure: Break down the explanation into 3 progressive panels:
-   - Panel 1: The Core Concept / Setup
-   - Panel 2: The Core Mechanism / Action / Conflict
-   - Panel 3: The Result / Breakthrough / Impact
-3. Caption: Clear, engaging, natural human tone (1-2 sentences).
+1. Strict Grounding: Use ONLY facts directly supported by the context above.
+2. Narrative Progression:
+   - Panel 1: The Core Concept & Input (What is the starting point or problem?)
+   - Panel 2: The Core Mechanism & Action (How does it work step-by-step?)
+   - Panel 3: The Result & Grounded Output (What is the final accurate outcome?)
+3. Caption: Clear, engaging, natural human explanation (1-2 sentences).
 
-IMAGE DIRECTION REQUIREMENTS:
-1. Topic match: Every image_prompt must make the specific topic and that panel's point recognizable at a glance. Use the actual named entities, tools, materials, and actions from the topic, caption, and context; do not substitute unrelated stock metaphors or generic technology imagery.
-2. Show the process: Depict the key subject performing the action described in the caption, and make important relationships or information flow visible using concrete objects and their arrangement.
-3. Metaphors are optional: Prefer a direct, plausible depiction of the real process. Use a physical analogy only when it maps clearly to the process and does not replace or contradict the topic. Never force the same metaphor onto unrelated subjects.
-4. Panel progression: Keep a coherent visual setting and subject across panels where appropriate, while changing the action/composition to show setup, mechanism, and outcome.
-5. Specificity: Describe the main subject, its action, relevant topic-specific objects, setting, composition/camera angle, and lighting. Avoid vague descriptions that could illustrate many unrelated topics.
-6. Style and exclusions: Use believable, realistic editorial illustration with natural-looking forms and materials. Avoid comic-book linework, fantasy, generic sci-fi corridors, glowing grids, floating numbers, robots, or holograms unless those elements are directly relevant to the topic and supported by context. Do not request readable text in the image.
+CRITICAL IMAGE PROMPT RULES:
+The image prompt is sent to a text-to-image diffusion model. Diffusion models cannot draw abstract buzzwords (like 'embeddings similarity', 'latent vectors', 'data points'). When given abstract phrases, they hallucinate generic neon hallways, random futuristic tunnels, or robots.
 
-For example, when explaining retrieval-augmented generation, a retrieval-stage image should visibly show a user's question being matched to relevant source documents and those selected passages being passed onward to a language model, if those steps are supported by the context. Do not depict an unrelated abstract data tunnel.
+To ensure the images are 100% relevant and recognizable for "{topic}":
+1. ALWAYS start every image_prompt with the topic name: "A scene illustrating {topic}: ..."
+2. Depict concrete physical subjects, specific objects, interactions, and environments that visually tell this specific panel's story:
+   - For Computer Science / AI / RAG: Show realistic, tangible scenes such as an analyst searching through highlighted document archives, a split-screen interface matching questions to book citations, an open manuscript being verified with highlighted sticky notes and reference manuals.
+   - For Biology / Chemistry: Show physical lab equipment, glassware, cellular structures, biological specimens, microscope views.
+   - For Physics / Engineering: Show physical machines, telescopes, diagrams on blackboards, gears, experimental setups.
+3. FORBIDDEN ELEMENTS: Absolutely NO generic futuristic hallways, NO glowing abstract cyber-tunnels, NO random neon circuit boards, NO floating matrix numbers, and NO robots unless the topic is specifically humanoid robotics.
+4. Keep the image_prompt under 35 words: Subject + Specific Action + Environment + Lighting.
 
 Return ONLY valid JSON with no markdown formatting and no code fences. Exactly this JSON schema:
 {{
@@ -293,7 +295,7 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
     {{
       "panel_number": 1,
       "caption": "1-2 sentences clearly explaining the concept for this panel.",
-      "image_prompt": "A realistic, specific scene that visibly represents this panel's topic and action, grounded in the caption and context."
+      "image_prompt": "A scene illustrating {topic}: A clear, tangible description of the subject, action, and setting matching this panel's explanation."
     }}
   ]
 }}
@@ -329,34 +331,41 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
         # Dynamic random seed per panel so images have distinct, fresh compositions
         random_seed = random.randint(1, 1000000)
+        encoded_prompt = quote(image_prompt)
 
-        try:
-            # Using POST is much more reliable than GET because it avoids URI Too Long (414) 
-            # and complex URL encoding issues with long prompts.
-            payload = {
-                "prompt": image_prompt,
-                "width": 1024,
-                "height": 1024,
-                "seed": random_seed,
-                "nologo": True
-            }
-            headers = {"User-Agent": "ExplainIT/1.0"}
-            
-            img_response = requests.post("https://image.pollinations.ai/", json=payload, headers=headers, timeout=60)
-            img_response.raise_for_status()
+        # Check for optional POLLINATIONS_API_KEY
+        pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0"}
+        if pollinations_key:
+            headers["Authorization"] = f"Bearer {pollinations_key}"
 
+        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
+        if pollinations_key:
+            image_gen_url += f"&key={pollinations_key}"
+
+        img_data = None
+        for attempt in range(2):
+            try:
+                img_response = requests.get(image_gen_url, headers=headers, timeout=45)
+                if img_response.status_code == 200 and len(img_response.content) > 1000:
+                    img_data = img_response.content
+                    break
+                print(f"Panel {panel_num} attempt {attempt+1} status: {img_response.status_code}")
+                time.sleep(2)
+            except Exception as e:
+                print(f"Error generating image for panel {panel_num} (attempt {attempt+1}): {e}")
+                time.sleep(2)
+
+        if img_data:
             output_path = f"data/images/panel_{panel_num}.png"
             with open(output_path, "wb") as f:
-                f.write(img_response.content)
-
+                f.write(img_data)
             panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
-        except Exception as e:
-            print(f"Error generating image for panel {panel_num}: {e}")
-            # Ensure the frontend doesn't crash on connection error if image gen fails
+        else:
             panel["image_url"] = f"https://placehold.co/1024x1024/0B0C0E/E8A33D.png?text=Generation+Failed"
-        
-        # Add delay between panel image generations to prevent rate limiting
-        time.sleep(3.5)
+
+        # Delay to minimize rate limiting
+        time.sleep(2.5)
 
     script["grounded"] = True
     return script
