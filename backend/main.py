@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import json
 import random
@@ -85,6 +86,43 @@ def invoke_llm_with_retry(prompt: str, max_retries: int = 3):
                     break
 
     raise last_error
+
+def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str) -> bool:
+    """
+    Generates a bespoke, richly detailed, modern technical infographic SVG
+    illustrating the exact mechanism and components of this panel.
+    """
+    prompt = f"""You are an elite educational infographic designer and technical illustrator.
+Create a rich, visually detailed, modern editorial SVG illustration for this explainer panel:
+Topic: {topic}
+Panel {panel_num} of 3: {caption}
+
+DESIGN SYSTEM SPECIFICATIONS:
+- Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+- Aesthetic: Premium dark-mode technical journal / editorial tech brand.
+- Background: #15171A with subtle #262930 grid or structural framing.
+- Accents: Vibrant amber (#E8A33D), cyan/blue (#38BDF8), emerald (#10B981) for key active nodes and glowing flows.
+- Typography / Text in SVG: Clean, legible labels for key components using system fonts (Inter/sans-serif), text colors #F2F1ED and #8B8D93.
+- Subject matter: Visually depict the EXACT mechanism, objects, data flow, and architecture described in the caption for "{topic}". Use labeled boxes, flowchart arrows, connecting pathways, glowing highlight rings, database cylinders, document cards, and transformer nodes matching this specific step.
+- Do NOT draw blank circles or generic placeholders. Every element must represent a meaningful part of the explanation.
+- Return ONLY the raw valid <svg>...</svg> XML markup. No explanation, no markdown backticks, no code fences.
+"""
+    try:
+        response = invoke_llm_with_retry(prompt)
+        raw = "".join([b["text"] for b in response.content if isinstance(b, dict) and b.get("type") == "text"]) if isinstance(response.content, list) else str(response.content)
+        svg = raw.strip()
+        match = re.search(r'(<svg[\s\S]*?</svg>)', svg)
+        if match:
+            svg_content = match.group(1)
+        else:
+            svg_content = svg.replace('```xml', '').replace('```svg', '').replace('```', '').strip()
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(svg_content)
+        return True
+    except Exception as e:
+        print(f"Failed to generate SVG for panel {panel_num}: {e}")
+        return False
 
 STYLE_SUFFIX = ", realistic editorial illustration, natural materials and believable proportions, carefully composed documentary-style scene, soft natural cinematic lighting, restrained vibrant colors, clear focal subject, fine realistic detail, no text, no watermark, no logos"
 GROUNDING_THRESHOLD = 1.0
@@ -361,40 +399,38 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
         # Check for optional POLLINATIONS_API_KEY
         pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0"}
-        if pollinations_key:
-            headers["Authorization"] = f"Bearer {pollinations_key}"
+        img_saved = False
 
         if pollinations_key:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0",
+                "Authorization": f"Bearer {pollinations_key}"
+            }
             image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
-        else:
-            image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
+            for attempt in range(2):
+                try:
+                    img_response = requests.get(image_gen_url, headers=headers, timeout=45)
+                    if img_response.status_code == 200 and len(img_response.content) > 1000:
+                        png_path = f"data/images/panel_{panel_num}.png"
+                        with open(png_path, "wb") as f:
+                            f.write(img_response.content)
+                        panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
+                        img_saved = True
+                        break
+                    time.sleep(2)
+                except Exception as e:
+                    print(f"Error generating diffusion image for panel {panel_num}: {e}")
+                    time.sleep(2)
 
-        img_data = None
-        for attempt in range(2):
-            try:
-                img_response = requests.get(image_gen_url, headers=headers, timeout=45)
-                if img_response.status_code == 200 and len(img_response.content) > 1000:
-                    img_data = img_response.content
-                    break
-                print(f"Panel {panel_num} attempt {attempt+1} status: {img_response.status_code}")
-                time.sleep(2)
-            except Exception as e:
-                print(f"Error generating image for panel {panel_num} (attempt {attempt+1}): {e}")
-                time.sleep(2)
-
-        output_path = f"data/images/panel_{panel_num}.png"
-        if img_data:
-            with open(output_path, "wb") as f:
-                f.write(img_data)
-        else:
-            # Fallback to on-brand editorial visual card so panel NEVER shows broken error
-            create_fallback_card(topic, panel_num, panel.get("caption", ""), output_path)
-
-        panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
-
-        # Delay to minimize rate limiting
-        time.sleep(2.5)
+        if not img_saved:
+            # Generate custom topic-specific SVG technical illustration using the LLM
+            svg_path = f"data/images/panel_{panel_num}.svg"
+            if generate_topic_svg(topic, panel_num, panel.get("caption", ""), svg_path):
+                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg"
+            else:
+                png_path = f"data/images/panel_{panel_num}.png"
+                create_fallback_card(topic, panel_num, panel.get("caption", ""), png_path)
+                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
 
     script["grounded"] = True
     return script
