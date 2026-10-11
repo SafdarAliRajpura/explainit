@@ -2,9 +2,11 @@ import os
 import time
 import json
 import random
+import textwrap
 import requests
 import httpx
 import urllib.parse
+from PIL import Image, ImageDraw
 from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
 from dotenv import load_dotenv
@@ -18,6 +20,30 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
+
+def create_fallback_card(topic: str, panel_num: int, caption: str, output_path: str):
+    """
+    Renders an editorial dark-themed visual card with amber accents and
+    topic/caption typography so panels always display beautiful, relevant content
+    even if an upstream image API is blocked or rate-limited.
+    """
+    img = Image.new('RGB', (1024, 1024), color='#15171A')
+    draw = ImageDraw.Draw(img)
+    # Subtle inner border
+    draw.rectangle([(32, 32), (992, 992)], outline='#262930', width=2)
+    # Amber badge
+    draw.rounded_rectangle([(80, 80), (340, 134)], radius=27, fill='#262930', outline='#E8A33D', width=2)
+    draw.text((105, 98), f'PANEL {panel_num} OF 3', fill='#E8A33D')
+    # Topic label
+    draw.text((80, 180), topic.upper(), fill='#8B8D93')
+    # Decorative conceptual rings
+    draw.ellipse([(412, 360), (612, 560)], outline='#E8A33D', width=4)
+    draw.ellipse([(442, 390), (582, 530)], outline='#262930', width=2)
+    draw.ellipse([(492, 440), (532, 480)], fill='#E8A33D')
+    # Caption excerpt
+    wrapped = textwrap.fill(caption, width=54)
+    draw.text((80, 720), wrapped, fill='#F2F1ED')
+    img.save(output_path)
 
 app = FastAPI()
 
@@ -339,9 +365,10 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         if pollinations_key:
             headers["Authorization"] = f"Bearer {pollinations_key}"
 
-        image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
         if pollinations_key:
-            image_gen_url += f"&key={pollinations_key}"
+            image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
+        else:
+            image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
 
         img_data = None
         for attempt in range(2):
@@ -356,13 +383,15 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
                 print(f"Error generating image for panel {panel_num} (attempt {attempt+1}): {e}")
                 time.sleep(2)
 
+        output_path = f"data/images/panel_{panel_num}.png"
         if img_data:
-            output_path = f"data/images/panel_{panel_num}.png"
             with open(output_path, "wb") as f:
                 f.write(img_data)
-            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
         else:
-            panel["image_url"] = f"https://placehold.co/1024x1024/0B0C0E/E8A33D.png?text=Generation+Failed"
+            # Fallback to on-brand editorial visual card so panel NEVER shows broken error
+            create_fallback_card(topic, panel_num, panel.get("caption", ""), output_path)
+
+        panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
 
         # Delay to minimize rate limiting
         time.sleep(2.5)
