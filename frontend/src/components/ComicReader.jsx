@@ -92,7 +92,7 @@ export default function ComicReader({ panels, topic, onReset }) {
   const handleShare = async (panelNum, caption) => {
     if (!linkedinConnected) {
       const connected = await handleConnectLinkedin();
-      if (!connected) return;
+      if (!connected) return { success: false, message: 'LinkedIn not connected' };
     }
 
     setShareStatuses(prev => ({ ...prev, [panelNum]: 'posting' }));
@@ -107,19 +107,22 @@ export default function ComicReader({ panels, topic, onReset }) {
         setTimeout(() => {
           setShareStatuses(prev => ({ ...prev, [panelNum]: 'idle' }));
         }, 2500);
+        return { success: true };
       } else {
         console.error("LinkedIn Post Error:", data);
         setShareStatuses(prev => ({ ...prev, [panelNum]: 'error' }));
         setTimeout(() => {
           setShareStatuses(prev => ({ ...prev, [panelNum]: 'idle' }));
-        }, 2500);
+        }, 3000);
+        return { success: false, message: data.message || "Failed to post to LinkedIn" };
       }
     } catch (err) {
       console.error("LinkedIn Post Exception:", err);
       setShareStatuses(prev => ({ ...prev, [panelNum]: 'error' }));
       setTimeout(() => {
         setShareStatuses(prev => ({ ...prev, [panelNum]: 'idle' }));
-      }, 2500);
+      }, 3000);
+      return { success: false, message: err.message };
     }
   };
 
@@ -521,7 +524,7 @@ export default function ComicReader({ panels, topic, onReset }) {
         linkedinConnected={linkedinConnected}
         linkedinName={linkedinName}
         onConnectLinkedin={handleConnectLinkedin}
-        onDirectPost={(caption) => handleShare(currentPanel?.panel_number || 1, caption)}
+        onDirectPost={(panelNum, caption) => handleShare(panelNum || currentPanel?.panel_number || 1, caption)}
       />
     </div>
   );

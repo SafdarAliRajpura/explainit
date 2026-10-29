@@ -26,6 +26,7 @@ export default function ShareStudioModal({
   // Direct post state
   const [directPosting, setDirectPosting] = useState(false);
   const [directPostSuccess, setDirectPostSuccess] = useState(false);
+  const [directPostError, setDirectPostError] = useState('');
 
   const totalSlides = (panels?.length || 3) + 2; // Cover + Panels (3) + Summary Slide = 5
 
@@ -428,18 +429,26 @@ export default function ShareStudioModal({
 
   // 6. Direct Post via existing LinkedIn API
   const handleDirectPostActivePanel = async () => {
-    const activePanelNum = Math.min(Math.max(currentSlide, 1), panels.length);
-    const caption = panels[activePanelNum - 1]?.caption || topic;
+    const activePanelNum = Math.min(Math.max(currentSlide, 1), panels?.length || 3);
+    const caption = panels?.[activePanelNum - 1]?.caption || topic;
 
     setDirectPosting(true);
+    setDirectPostError('');
     try {
       if (onDirectPost) {
-        await onDirectPost(activePanelNum, caption);
-        setDirectPostSuccess(true);
-        setTimeout(() => setDirectPostSuccess(false), 3000);
+        const res = await onDirectPost(activePanelNum, caption);
+        if (res && res.success) {
+          setDirectPostSuccess(true);
+          setTimeout(() => setDirectPostSuccess(false), 3500);
+        } else {
+          setDirectPostError(res?.message || 'Failed to post to LinkedIn');
+          setTimeout(() => setDirectPostError(''), 4000);
+        }
       }
     } catch (e) {
       console.error(e);
+      setDirectPostError('Network error while posting');
+      setTimeout(() => setDirectPostError(''), 4000);
     } finally {
       setDirectPosting(false);
     }
@@ -721,7 +730,7 @@ export default function ShareStudioModal({
                     <svg className="w-3.5 h-3.5 text-[#0077B5]" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
                     </svg>
-                    {directPosting ? 'Publishing...' : directPostSuccess ? '✓ Published to LinkedIn!' : `Direct Post Slide ${currentSlide + 1} to LinkedIn`}
+                    {directPosting ? 'Publishing...' : directPostSuccess ? '✓ Published to LinkedIn!' : directPostError ? `⚠️ ${directPostError}` : `Direct Post Slide ${currentSlide + 1} to LinkedIn`}
                   </button>
                 ) : (
                   <button

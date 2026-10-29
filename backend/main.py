@@ -48,6 +48,33 @@ def create_fallback_card(topic: str, panel_num: int, caption: str, output_path: 
     draw.text((80, 720), wrapped, fill='#F2F1ED')
     img.save(output_path)
 
+
+def convert_svg_to_png(svg_path: str, png_path: str):
+    """
+    Renders SVG to PNG using resvg-py with a solid dark background (#0F1117)
+    and RGB color mode for maximum compatibility with image upload APIs.
+    """
+    try:
+        import resvg_py
+        import io
+        if not os.path.exists(svg_path):
+            return False
+        with open(svg_path, "r", encoding="utf-8") as f:
+            svg_content = f.read()
+        png_bytes = resvg_py.svg_to_bytes(svg_content)
+        img = Image.open(io.BytesIO(png_bytes))
+        bg = Image.new("RGB", img.size, (15, 17, 23))
+        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+            bg.paste(img, mask=img.split()[-1] if img.mode in ("RGBA", "LA") else None)
+        else:
+            bg.paste(img)
+        bg.save(png_path, "PNG")
+        print(f"[SVG->PNG] Rasterized '{svg_path}' to '{png_path}' successfully ({os.path.getsize(png_path)} bytes).", flush=True)
+        return True
+    except Exception as e:
+        print(f"[SVG->PNG] Error rasterizing '{svg_path}': {e}", flush=True)
+        return False
+
 app = FastAPI()
 
 @app.middleware("http")
@@ -799,7 +826,26 @@ LINKEDIN_REDIRECT_URI = "http://localhost:8000/auth/linkedin/callback"
 
 # Temporary in-memory storage for the demo — good enough for a single-user project,
 # not meant to scale to multiple real users.
-linkedin_session = {"access_token": None, "person_urn": None, "name": None}
+LINKEDIN_SESSION_FILE = "data/linkedin_session.json"
+
+def load_linkedin_session():
+    if os.path.exists(LINKEDIN_SESSION_FILE):
+        try:
+            with open(LINKEDIN_SESSION_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"access_token": None, "person_urn": None, "name": None}
+
+def save_linkedin_session(data):
+    try:
+        os.makedirs("data", exist_ok=True)
+        with open(LINKEDIN_SESSION_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"Error persisting linkedin session: {e}", flush=True)
+
+linkedin_session = load_linkedin_session()
 
 
 class TopicRequest(BaseModel):
@@ -852,6 +898,7 @@ async def linkedin_callback(code: str):
         userinfo = userinfo_response.json()
         linkedin_session["person_urn"] = f"urn:li:person:{userinfo['sub']}"
         linkedin_session["name"] = userinfo.get("name")
+        save_linkedin_session(linkedin_session)
 
     # This runs inside a popup window opened by the frontend — close it automatically
     # once the login succeeds, so the user lands back in the app, not on a raw JSON page.
@@ -872,14 +919,28 @@ def linkedin_status():
 
 @app.post("/linkedin/post-panel")
 async def post_panel_to_linkedin(panel_number: int, caption: str):
+    print(f"[LinkedIn Post] Initiating post for panel {panel_number}...", flush=True)
     if not linkedin_session["access_token"]:
-        return {"success": False, "message": "Not connected to LinkedIn yet. Visit /auth/linkedin/login first."}
+        print("[LinkedIn Post] Error: Not connected to LinkedIn yet.", flush=True)
+        return {"success": False, "message": "Not connected to LinkedIn yet. Please connect your LinkedIn account first."}
 
     access_token = linkedin_session["access_token"]
     person_urn = linkedin_session["person_urn"]
     image_path = f"data/images/panel_{panel_number}.png"
+    svg_path = f"data/images/panel_{panel_number}.svg"
+
+    # Auto-rasterize SVG to PNG if PNG doesn't exist
+    if not os.path.exists(image_path) and os.path.exists(svg_path):
+        print(f"[LinkedIn Post] Auto-rasterizing {svg_path} -> {image_path}...", flush=True)
+        convert_svg_to_png(svg_path, image_path)
+
+    # Fallback card if neither exists
+    if not os.path.exists(image_path):
+        print(f"[LinkedIn Post] Generating editorial card for panel {panel_number}...", flush=True)
+        create_fallback_card("Explained", panel_number, caption, image_path)
 
     if not os.path.exists(image_path):
+        print(f"[LinkedIn Post] Error: Image file could not be prepared for panel {panel_number}.", flush=True)
         return {"success": False, "message": f"No image found for panel {panel_number}."}
 
     headers = {
@@ -889,6 +950,7 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
     }
 
     async with httpx.AsyncClient() as client:
+        # Step 1: Register Upload
         register_response = await client.post(
             "https://api.linkedin.com/v2/assets?action=registerUpload",
             headers=headers,
@@ -905,23 +967,30 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
         register_data = register_response.json()
 
         if "value" not in register_data:
-            return {"success": False, "message": "Failed to register upload", "details": register_data}
+            print(f"[LinkedIn Post] Failed to register upload: {register_data}", flush=True)
+            return {"success": False, "message": "Failed to register upload with LinkedIn", "details": register_data}
 
         upload_url = register_data["value"]["uploadMechanism"]["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]["uploadUrl"]
         asset_urn = register_data["value"]["asset"]
 
+        # Step 2: Upload Binary Image
         with open(image_path, "rb") as img_file:
             image_bytes = img_file.read()
 
         upload_response = await client.put(
             upload_url,
-            headers={"Authorization": f"Bearer {access_token}"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "image/png"
+            },
             content=image_bytes,
         )
 
         if upload_response.status_code not in (200, 201):
+            print(f"[LinkedIn Post] Media upload failed: HTTP {upload_response.status_code} {upload_response.text}", flush=True)
             return {"success": False, "message": "Image upload to LinkedIn failed", "status": upload_response.status_code}
 
+        # Step 3: Create UGC Post
         post_response = await client.post(
             "https://api.linkedin.com/v2/ugcPosts",
             headers=headers,
@@ -947,8 +1016,10 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
         )
 
         if post_response.status_code not in (200, 201):
+            print(f"[LinkedIn Post] UGC Post creation failed: HTTP {post_response.status_code} {post_response.text}", flush=True)
             return {"success": False, "message": "Post creation failed", "status": post_response.status_code, "details": post_response.text}
 
+    print(f"[LinkedIn Post] Panel {panel_number} posted to LinkedIn successfully!", flush=True)
     return {"success": True, "message": "Posted to LinkedIn successfully."}
 
 
@@ -1150,10 +1221,11 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
                     pass
 
             svg_path = f"data/images/panel_{panel_num}.svg"
+            png_path = f"data/images/panel_{panel_num}.png"
             if generate_topic_svg(topic, panel_num, caption, svg_path):
                 panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+                convert_svg_to_png(svg_path, png_path)
             else:
-                png_path = f"data/images/panel_{panel_num}.png"
                 create_fallback_card(topic, panel_num, caption, png_path)
                 panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
         else:
