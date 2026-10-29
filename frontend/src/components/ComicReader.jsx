@@ -18,6 +18,7 @@ export default function ComicReader({ panels, topic, onReset }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   // LinkedIn State
   const [linkedinConnected, setLinkedinConnected] = useState(false);
@@ -225,10 +226,10 @@ export default function ComicReader({ panels, topic, onReset }) {
         </div>
       </div>
 
-      <div className="w-full flex flex-col lg:flex-row gap-10 lg:gap-16 items-stretch">
+      <div className="w-full flex flex-col lg:flex-row gap-10 lg:gap-14 items-stretch">
         
         {/* Left Side: Image Container */}
-        <div className="w-full lg:w-[55%] relative overflow-hidden rounded-2xl border border-border-dark shadow-2xl bg-surface aspect-square md:aspect-[4/3] flex items-center justify-center shrink-0">
+        <div className="group w-full lg:w-[52%] relative overflow-hidden rounded-2xl border border-border-dark shadow-2xl bg-[#121417] aspect-square max-h-[580px] flex items-center justify-center shrink-0 p-3 sm:p-5">
           <AnimatePresence mode="wait" custom={direction}>
             {currentPanel?.image_url ? (
               <motion.div
@@ -238,16 +239,25 @@ export default function ComicReader({ panels, topic, onReset }) {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="absolute inset-0 w-full h-full"
+                className="w-full h-full flex items-center justify-center relative"
               >
                 <img 
                   src={currentPanel.image_url}
                   alt={`Panel ${currentIndex + 1}`}
-                  className="w-full h-full object-cover contrast-[1.15] saturate-[1.2] brightness-110"
+                  className="w-full h-full object-contain rounded-xl select-none"
                 />
-                {/* Cinematic Vignette Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-[#0B0C0E]/40 via-transparent to-[#0B0C0E]/10 pointer-events-none mix-blend-overlay" />
-                <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(11,12,14,0.5)] pointer-events-none" />
+
+                {/* Full Resolution Expand Button */}
+                <button
+                  onClick={() => setIsZoomed(true)}
+                  className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-lg bg-[#15171A]/90 hover:bg-[#262930] border border-[#262930] text-[#8B8D93] hover:text-accent transition-all opacity-0 group-hover:opacity-100 cursor-pointer shadow-lg backdrop-blur-sm flex items-center gap-1.5 text-xs font-medium"
+                  title="View full resolution"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                  </svg>
+                  <span>Expand</span>
+                </button>
               </motion.div>
             ) : (
               <motion.div
@@ -257,7 +267,7 @@ export default function ComicReader({ panels, topic, onReset }) {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="absolute inset-0 flex items-center justify-center"
+                className="w-full h-full flex items-center justify-center"
               >
                 <span className="text-text-muted font-medium">No Image</span>
               </motion.div>
@@ -266,7 +276,7 @@ export default function ComicReader({ panels, topic, onReset }) {
         </div>
 
         {/* Right Side: Content & Controls */}
-        <div className="w-full lg:w-[45%] flex flex-col justify-between py-2 lg:py-6">
+        <div className="w-full lg:w-[48%] flex flex-col justify-between py-2 lg:py-4">
           
           {/* Animated Text Content */}
           <div className="flex-1 flex flex-col justify-center">
@@ -387,6 +397,54 @@ export default function ComicReader({ panels, topic, onReset }) {
 
         </div>
       </div>
+
+      {/* Lightbox Modal for High-Resolution Vector Inspection */}
+      <AnimatePresence>
+        {isZoomed && currentPanel?.image_url && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsZoomed(false)}
+            className="fixed inset-0 z-50 bg-[#0B0C0E]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()} 
+              className="relative max-w-4xl max-h-[92vh] w-full bg-[#15171A] border border-[#262930] rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col items-center cursor-default"
+            >
+              <button 
+                onClick={() => setIsZoomed(false)}
+                className="absolute top-4 right-4 p-2 rounded-lg bg-[#262930] text-[#8B8D93] hover:text-[#F2F1ED] transition-colors cursor-pointer"
+                title="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              <div className="w-full flex-1 flex items-center justify-center overflow-hidden my-2">
+                <img 
+                  src={currentPanel.image_url} 
+                  alt={`Panel ${currentIndex + 1} Full`}
+                  className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl"
+                />
+              </div>
+              
+              <div className="w-full pt-3 border-t border-[#262930] flex items-center justify-between text-xs text-[#8B8D93]">
+                <span className="tracking-wider uppercase font-semibold text-accent">
+                  Panel {currentIndex + 1} of {panels.length}
+                </span>
+                <span className="capitalize text-text-primary font-medium truncate max-w-md">
+                  {topic}
+                </span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

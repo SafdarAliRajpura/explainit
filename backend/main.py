@@ -107,14 +107,19 @@ Create a rich, visually detailed, modern editorial SVG illustration for this exp
 Topic: {topic}
 Panel {panel_num} of 3: {caption}
 
-DESIGN SYSTEM SPECIFICATIONS:
+DESIGN SYSTEM & SAFE BOUNDS SPECIFICATIONS:
 - Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
 - Aesthetic: Premium dark-mode technical journal / editorial tech brand.
-- Background: #15171A with subtle #262930 grid or structural framing.
+- Background: Base <rect width="800" height="800" fill="#15171A" rx="16"/> with subtle #262930 grid or structural framing.
 - Accents: Vibrant amber (#E8A33D), cyan/blue (#38BDF8), emerald (#10B981) for key active nodes and glowing flows.
-- Typography / Text in SVG: Clean, legible labels for key components using system fonts (Inter/sans-serif), text colors #F2F1ED and #8B8D93.
-- Subject matter: Visually depict the EXACT mechanism, objects, data flow, and architecture described in the caption for "{topic}". Use labeled boxes, flowchart arrows, connecting pathways, glowing highlight rings, database cylinders, document cards, and transformer nodes matching this specific step.
-- Do NOT draw blank circles or generic placeholders. Every element must represent a meaningful part of the explanation.
+- SAFE DRAWING BOUNDARIES (CRITICAL TO AVOID CLIPPING):
+  * Keep ALL visual elements, node boxes, text labels, arrows, and headers strictly inside a safe margin of at least 50px from all outer boundaries (i.e. x: 50 to 750, y: 50 to 750).
+  * Absolutely NO text or shapes may bleed off or touch the outer border.
+- STRUCTURE & LAYOUT:
+  * Header zone (y: 60 to 115): Step label, e.g. "PANEL {panel_num} OF 3", and clear diagram title.
+  * Diagram body (y: 135 to 680): Visually depict the EXACT mechanism, objects, data flow, and architecture described in the caption for "{topic}". Use labeled boxes, flowchart arrows, connecting pathways, glowing highlight rings, database cylinders, document cards, and transformer nodes matching this specific step.
+  * Footer zone (y: 700 to 740): Clean status pill or component highlight badge.
+- Typography: Clean, legible labels using system sans-serif fonts, with text colors #F2F1ED and #8B8D93.
 - Return ONLY the raw valid <svg>...</svg> XML markup. No explanation, no markdown backticks, no code fences.
 """
     try:
