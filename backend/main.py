@@ -50,6 +50,15 @@ def create_fallback_card(topic: str, panel_num: int, caption: str, output_path: 
 
 app = FastAPI()
 
+@app.middleware("http")
+async def add_cache_control_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/images"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5174"],
@@ -99,44 +108,122 @@ def invoke_llm_with_retry(prompt: str, max_retries: int = 2):
 
 def detect_topic_domain(topic: str, caption: str) -> dict:
     """
-    Classifies the topic into its authentic domain (Biology, Physics, CS/AI, or General)
-    so visual metaphors, palettes, and recognizable real-world elements match the subject perfectly.
+    Accurately classifies the topic and caption into its genuine subject domain using
+    robust word-boundary regex matching to prevent false triggers (e.g. 'generation' matching 'gene').
+    Provides authentic color palettes, lighting, and domain-accurate visual guidelines.
     """
     combined = f"{topic} {caption}".lower()
 
-    # 1. Biology & Life Sciences (Photosynthesis, Cells, Plants, Animals, Medicine)
-    bio_keywords = [
-        "photosynthesis", "chlorophyll", "chloroplast", "thylakoid", "plant", "leaf",
-        "cell", "dna", "rna", "crispr", "gene", "protein", "enzyme", "glucose",
-        "mitochondria", "respiration", "bacteria", "virus", "vaccine", "immune",
-        "organism", "biology", "calvin", "sugar", "botanical"
-    ]
-    if any(k in combined for k in bio_keywords):
+    # 1. History, Politics, Society, Governance & Humanities
+    history_pattern = re.compile(
+        r'\b(history|historical|revolutions?|french revolution|monarch(y|s)?|kings?|queens?|guillotine|bastille|'
+        r'parliaments?|constitutions?|democrac(y|ies)|feudalism|renaissance|medieval|wars?|battles?|rebellions?|'
+        r'declarations?|civil wars?|empires?|treat(y|ies)|politics|political|governments?|senates?|republics?|'
+        r'citizens?|dynast(y|ies)|colonial|revolts?|rights of man|third estate|estates-general|nobility|clergy|'
+        r'liberty|reign of terror)\b',
+        re.IGNORECASE
+    )
+    if history_pattern.search(combined):
         return {
-            "domain": "BIOLOGY & NATURE",
-            "bg_color": "#0B1410",
-            "primary_accent": "#10B981",  # Emerald leaf green
-            "secondary_accent": "#F59E0B", # Golden sunlight
-            "tertiary_accent": "#38BDF8",  # Water cyan
+            "domain": "HISTORY, POLITICS & SOCIETY",
+            "bg_color": "#0F1117",
+            "primary_accent": "#F59E0B",  # Royal gold
+            "secondary_accent": "#EF4444", # Revolutionary crimson
+            "tertiary_accent": "#3B82F6",  # Steel blue
             "visual_guidance": """
-- VISUAL STORYTELLING (BIOLOGY/NATURE):
-  * Make it intuitive, tangible, and practical! Anyone without biology knowledge must understand it in 2 seconds.
-  * For Light: Draw a big radiant golden Sun (☀️) with warm glowing rays.
-  * For Plants: Draw a lush, friendly green leaf (🍃) or plant sprouting with clean cellular cutaways.
-  * For Inputs: Draw clear water droplets (💧 'Water In') and breezy air arrows ('Fresh Air / CO2').
-  * For Outputs: Draw floating oxygen bubbles (🫧 'Oxygen Out') and sweet energy stars/fruit ('Plant Food / Sugar').
-  * FORBIDDEN: Do NOT draw complex enzyme chains, NO biochemical pathway names (PS II, Cyt b6f, RuBisCO), NO molecular formulas, and NO equations.
+- VISUAL STORYTELLING (HISTORY, POLITICS & SOCIETY):
+  * Make it visually authentic to human history, social movements, and governance!
+  * For Monarchy & Power: Draw classical ornate thrones, royal crowns, classical stone pillars/palaces, or scales of justice.
+  * For The Third Estate / Commoners: Draw stylized citizen assemblies, raised protest banners, or breaking chains of feudal bondage.
+  * For Turning Points & Revolution: Draw fortress battlements (like the Bastille), rising pressure gauges of inequality, or storming gates.
+  * For Documents & Rights: Draw parchment scrolls with wax seals, quill pens, written decrees, and declarations of liberty.
+  * ABSOLUTE PROHIBITION: Absolutely NO plants or leaves, NO spaceships, NO cosmic spheres or quantum energy rings!
 """
         }
 
-    # 2. Physics, Space, Energy & Chemistry
-    physics_keywords = [
-        "atom", "nuclear", "fusion", "fission", "quantum", "gravity", "electron", "proton",
-        "neutron", "particle", "magnetic", "electromagnetic", "wave", "laser", "photon",
-        "thermodynamics", "entropy", "relativity", "black hole", "planet", "orbit",
-        "battery", "electrolyte", "ion", "chemistry", "reaction", "molecule", "plasma"
-    ]
-    if any(k in combined for k in physics_keywords):
+    # 2. Economics, Finance, Trade & Commerce
+    econ_pattern = re.compile(
+        r'\b(econom(y|ics|ic)|inflation|deflation|supply and demand|stock markets?|cryptocurrenc(y|ies)|'
+        r'interest rates?|bank(s|ing)?|currenc(y|ies)|recessions?|gdp|monopol(y|ies)|market balance|trade deficit|'
+        r'liquidity|investors?|fiscal|central banks?|treasury|commerce|capitalism)\b',
+        re.IGNORECASE
+    )
+    if econ_pattern.search(combined):
+        return {
+            "domain": "ECONOMICS & FINANCE",
+            "bg_color": "#0B132B",
+            "primary_accent": "#10B981",  # Emerald wealth/growth
+            "secondary_accent": "#F43F5E", # Coral deficit/pressure
+            "tertiary_accent": "#F59E0B",  # Golden coin/value
+            "visual_guidance": """
+- VISUAL STORYTELLING (ECONOMICS & FINANCE):
+  * Make market forces and commercial mechanisms intuitive!
+  * For Supply vs Demand: Draw physical balance scales with goods on one side and buyers on the other.
+  * For Inflation & Currency: Draw expanding price tags, coins flowing through vaults, or clear rising/falling trend curves.
+  * For Trade: Draw interconnected trade routes, merchant vessels, or factory production conveyors.
+  * ABSOLUTE PROHIBITION: NO random leaves or plants, NO quantum cosmic waves!
+"""
+        }
+
+    # 3. Biology, Ecology, Medicine & Life Sciences
+    bio_pattern = re.compile(
+        r'\b(photosynthesis|chloroplasts?|chlorophyll|thylakoids?|botany|plant cells?|dna double helix|dna replication|'
+        r'crispr|enzymes?|glucose synthesis|mitochondria|cellular respiration|bacteria|vir(us|uses)|vaccines?|antibodies|'
+        r'immune systems?|pathogens?|cell divisions?|mitosis|meiosis|calvin cycle|biological organisms?|cellular cutaways?)\b',
+        re.IGNORECASE
+    )
+    if bio_pattern.search(combined):
+        return {
+            "domain": "BIOLOGY & LIFE SCIENCES",
+            "bg_color": "#0B1410",
+            "primary_accent": "#10B981",  # Emerald leaf green
+            "secondary_accent": "#F59E0B", # Radiant sunlight amber
+            "tertiary_accent": "#38BDF8",  # Clear water cyan
+            "visual_guidance": """
+- VISUAL STORYTELLING (BIOLOGY & LIFE SCIENCES):
+  * Make living biological systems intuitive, tangible, and friendly!
+  * For Photosynthesis/Botany: Draw a radiant golden Sun (☀️), a vibrant green leaf (🍃) with clean cutaway, clear water droplets (💧 'Water In'), oxygen bubbles (🫧 'Oxygen Out'), and sugar food energy stars ('Plant Sugar').
+  * For Genetics/Cells: Draw twisting colorful DNA ladder rungs, clean cell membrane compartments, or lock-and-key enzyme docking.
+  * For Immunity: Draw Y-shaped antibody shields neutralizing spike virus particles.
+  * FORBIDDEN: NO dense biochemical pathway abbreviations (no Cyt b6f, PS II), NO complex organic chemistry formulas.
+"""
+        }
+
+    # 4. Computer Science, AI, Algorithms & Software
+    cs_pattern = re.compile(
+        r'\b(rag|retrieval augmented|gans?|generative adversarial|llms?|large language models?|neural networks?|'
+        r'deep learning|machine learning|artificial intelligence|transformers?|vector embeddings?|vector databases?|'
+        r'faiss|blockchains?|docker containers?|kubernetes|compilers?|operating systems?|software architecture|'
+        r'api endpoints?|cloud computing|database index|algorithms?|generators?|discriminators?)\b',
+        re.IGNORECASE
+    )
+    if cs_pattern.search(combined):
+        return {
+            "domain": "COMPUTER SCIENCE & AI",
+            "bg_color": "#15171A",
+            "primary_accent": "#38BDF8",  # Cyber cyan
+            "secondary_accent": "#E8A33D", # Warm amber gold
+            "tertiary_accent": "#10B981",  # Emerald verification check
+            "visual_guidance": """
+- VISUAL STORYTELLING (COMPUTER SCIENCE & AI):
+  * Use practical, intuitive visual analogies!
+  * For Queries: Draw a user speech bubble with a question mark or search bar.
+  * For Search/Retrieval: Draw a focused magnifying glass or scanner illuminating matching cards in an indexed book archive.
+  * For Generation/Output: Draw an accurate verified answer document with green checkmark citation badges.
+  * For Neural Networks / GANs: Draw connected layers of nodes or creator/inspector icons with flowing signal arrows.
+  * FORBIDDEN: NO dense code blocks, NO mathematical matrix equations.
+"""
+        }
+
+    # 5. Physics, Chemistry, Astronomy & Energy
+    physics_pattern = re.compile(
+        r'\b(nuclear fusion|nuclear fission|quantum mechanics?|black holes?|gravity well|gravitational|electron shells?|'
+        r'electromagnetic|thermodynamics|laser beams?|chemical bonds?|covalent bonds?|ionic bonds?|'
+        r'supernovas?|exoplanets?|plasma physics|astronomy|particle physics|superconductors?|'
+        r'general relativity|special relativity|radioactivity|subatomic|photon rays?|atomic nuclei|atoms?)\b',
+        re.IGNORECASE
+    )
+    if physics_pattern.search(combined):
         return {
             "domain": "PHYSICS & SPACE",
             "bg_color": "#0B0F19",
@@ -144,47 +231,26 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
             "secondary_accent": "#06B6D4", # Electric cyan
             "tertiary_accent": "#F59E0B",  # Energy amber
             "visual_guidance": """
-- VISUAL STORYTELLING (PHYSICS/ENERGY):
-  * Draw physical, recognizable visual metaphors: glowing particle spheres, magnetic field ripples, and clean energy flows.
-  * Use clear spatial comparisons: before vs after, hot vs cold, attract vs repel.
-  * FORBIDDEN: NO calculus equations, NO complex tensor formulas, NO obscure quantum wavefunctions.
+- VISUAL STORYTELLING (PHYSICS, ENERGY & SPACE):
+  * Draw physical, recognizable visual metaphors: orbiting electron shells, magnetic field loops with North/South poles, laser prisms splitting light beams, or gravitational orbital paths.
+  * Use clear spatial comparisons: before vs after, attract vs repel, hot vs cold.
+  * FORBIDDEN: NO calculus differential equations, NO tensor formulas, NO obscure wavefunctions.
 """
         }
 
-    # 3. Computer Science, AI & Technology
-    cs_keywords = [
-        "rag", "gan", "llm", "neural", "transformer", "attention", "embedding", "vector",
-        "database", "faiss", "index", "blockchain", "hash", "crypto", "docker", "container",
-        "kubernetes", "compiler", "cache", "network", "packet", "cpu", "gpu", "algorithm"
-    ]
-    if any(k in combined for k in cs_keywords):
-        return {
-            "domain": "COMPUTER SCIENCE & AI",
-            "bg_color": "#15171A",
-            "primary_accent": "#38BDF8",  # Cyber cyan
-            "secondary_accent": "#E8A33D", # Amber gold
-            "tertiary_accent": "#10B981",  # Emerald success
-            "visual_guidance": """
-- VISUAL STORYTELLING (COMPUTER SCIENCE & AI):
-  * Use practical, intuitive visual analogies!
-  * For queries/prompts: Draw a user question bubble or digital fingerprint.
-  * For retrieval/search: Draw a focused magnifying glass or scanner over indexed books/cards with glowing matches.
-  * For generation: Draw an accurate verified answer card with green citation badges.
-  * FORBIDDEN: NO dense code blocks, NO mathematical vector arrays, NO confusing matrix math.
-"""
-        }
-
-    # 4. Default / General Mechanism
+    # 6. Default / Practical Everyday Mechanism
     return {
-        "domain": "GENERAL MECHANISM",
+        "domain": "PRACTICAL PROCESS & MECHANISM",
         "bg_color": "#15171A",
-        "primary_accent": "#E8A33D",
-        "secondary_accent": "#38BDF8",
-        "tertiary_accent": "#10B981",
-        "visual_guidance": """
-- VISUAL STORYTELLING (GENERAL):
-  * Draw clean, friendly real-world objects illustrating the core practical action.
-  * Show a clear visual progression: Input -> Action -> Result with bold arrows.
+        "primary_accent": "#E8A33D",  # Warm amber
+        "secondary_accent": "#38BDF8", # Sky cyan
+        "tertiary_accent": "#10B981",  # Emerald green
+        "visual_guidance": f"""
+- VISUAL STORYTELLING (PRACTICAL PROCESS):
+  * Draw clean, friendly real-world objects and physical mechanisms illustrating '{topic}'.
+  * Focus directly on this panel's specific action: '{caption}'.
+  * Show a clear visual progression: Input/Cause -> Action/Transformation -> Output/Result with bold arrows.
+  * NEVER draw random leaves or cosmic particles unless specifically relevant to '{topic}'.
 """
     }
 
@@ -292,21 +358,28 @@ PANEL {panel_num} OF 3: {caption}
 DOMAIN: {domain_name}
 
 CRITICAL "PRACTICAL & EASY TO UNDERSTAND" DESIGN RULES:
-1. VISUAL FIRST, MINIMAL WORDS:
-   - Maximum 4 to 6 simple, friendly words in the ENTIRE illustration!
-   - Examples of good labels: "Sunlight", "Water In", "Green Leaf", "Energy", "Fresh Oxygen", "Sugar Food".
-   - ABSOLUTE BAN: NO chemical equations, NO mathematical formulas (like 6CO2 + 6H2O -> ...), NO academic jargon (like photolysis, Calvin cycle equations, stroma matrix, ETC pumps), and NO tiny fine-print sentences. The user reads the caption on the side for details; the graphic must be a pure, self-explanatory visual metaphor!
-2. BOLD & RECOGNIZABLE GRAPHICS:
-   - Draw LARGE, friendly, colorful pictorial shapes: radiant glowing sun, a lush green leaf, clean water droplets, buoyant oxygen bubbles, warm energy rays.
-   - Use big, clear directional arrows showing the natural flow of ingredients transforming into results.
-3. CANVAS SPECIFICATIONS:
+1. TOPIC-ACCURATE VISUAL STORYTELLING:
+   - Your illustration MUST directly depict the specific event or concept described in:
+     TOPIC: {topic}
+     PANEL {panel_num}: {caption}
+   - Draw tangible, recognizable real-world objects, subjects, and metaphors fitting the "{domain_name}" domain.
+   - NEVER draw leaves, plants, or sunlight unless the topic is specifically botany or photosynthesis.
+   - NEVER draw cosmic space, orbits, or quantum particles unless the topic is specifically astronomy or physics.
+2. VISUAL FIRST, MINIMAL WORDS (2-SECOND RULE):
+   - Maximum 3 to 5 simple, friendly words in the ENTIRE illustration!
+   - Examples of good labels: Short labels describing the specific elements shown (e.g., "Third Estate", "Taxes", "Storming", or "User Prompt", "Book Archive", "Verified Answer").
+   - ABSOLUTE BAN: NO chemical equations, NO mathematical formulas, NO long dense paragraphs, and NO tiny fine-print sentences. The user reads the caption on the side for details; the graphic must be a pure, self-explanatory visual infographic.
+3. BOLD & RECOGNIZABLE GRAPHICS:
+   - Draw LARGE, friendly, colorful pictorial shapes with clear silhouettes.
+   - Use big, clear directional arrows showing the natural flow from cause to effect, or before vs after.
+4. CANVAS SPECIFICATIONS:
    - Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
    - Background: <rect width="800" height="800" fill="{bg_color}"/> with subtle warm ambient atmosphere filling 800x800 edge-to-edge.
    - Palette: Primary: {prim}, Secondary: {sec}, Tertiary: {tert}, Text: #F2F1ED.
    - Keep text inside x: 30 to 770 so nothing clips at the borders.
-   - Header: Simple badge ("STEP {panel_num}") and clean short title (2-4 words max).
+   - Header: Simple badge ("STEP {panel_num}") and clean short title (2-4 words max matching this panel).
 {guidance}
-4. STRICT XML FORMAT:
+5. STRICT XML FORMAT:
    - Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
    - Every ampersand must be written as &amp;.
 """
@@ -621,14 +694,32 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
                     print(f"Error generating diffusion image for panel {panel_num}: {e}", flush=True)
                     time.sleep(1)
 
+        cache_buster = int(time.time() * 1000)
         if not img_saved:
+            # Clean up any stale png counterpart so only the fresh svg exists
+            stale_png = f"data/images/panel_{panel_num}.png"
+            if os.path.exists(stale_png):
+                try:
+                    os.remove(stale_png)
+                except Exception:
+                    pass
+
             svg_path = f"data/images/panel_{panel_num}.svg"
             if generate_topic_svg(topic, panel_num, caption, svg_path):
-                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg"
+                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
             else:
                 png_path = f"data/images/panel_{panel_num}.png"
                 create_fallback_card(topic, panel_num, caption, png_path)
-                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
+                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
+        else:
+            # Clean up stale svg counterpart if diffusion succeeded
+            stale_svg = f"data/images/panel_{panel_num}.svg"
+            if os.path.exists(stale_svg):
+                try:
+                    os.remove(stale_svg)
+                except Exception:
+                    pass
+            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
         return panel
 
     print(f"[Generate] Generating visuals for {len(script['panels'])} panels in parallel...", flush=True)

@@ -242,6 +242,7 @@ export default function ComicReader({ panels, topic, onReset }) {
                 className="w-full h-full relative flex items-center justify-center"
               >
                 <img 
+                  key={currentPanel.image_url}
                   src={currentPanel.image_url}
                   alt={`Panel ${currentIndex + 1}`}
                   className="w-full h-full object-cover select-none"
@@ -427,6 +428,7 @@ export default function ComicReader({ panels, topic, onReset }) {
               
               <div className="w-full flex-1 flex items-center justify-center overflow-hidden my-2">
                 <img 
+                  key={currentPanel.image_url}
                   src={currentPanel.image_url} 
                   alt={`Panel ${currentIndex + 1} Full`}
                   className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl"
