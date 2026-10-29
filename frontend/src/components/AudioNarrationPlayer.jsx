@@ -14,9 +14,23 @@ export default function AudioNarrationPlayer({
   const [availableVoices, setAvailableVoices] = useState([]);
   const [selectedVoiceName, setSelectedVoiceName] = useState('');
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
   const utteranceRef = useRef(null);
   const autoAdvanceTimerRef = useRef(null);
+  const playerRef = useRef(null);
+
+  // Close menus on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (playerRef.current && !playerRef.current.contains(e.target)) {
+        setShowVoiceMenu(false);
+        setShowSpeedMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 1. Load system voices and pick best English voice
   useEffect(() => {
@@ -104,7 +118,6 @@ export default function AudioNarrationPlayer({
     };
 
     utterance.onerror = (e) => {
-      // Speech cancellation emits 'canceled', ignore as normal lifecycle
       if (e.error !== 'canceled' && e.error !== 'interrupted') {
         console.warn('Speech synthesis error:', e);
       }
@@ -171,11 +184,11 @@ export default function AudioNarrationPlayer({
   if (!hasSpeech) return null;
 
   return (
-    <div className="relative inline-flex items-center">
+    <div ref={playerRef} className="relative inline-flex items-center">
       {/* Primary Capsule Player */}
       <motion.div 
         layout
-        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-md ${
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-md ${
           isSpeaking 
             ? 'bg-[#15171A] border-accent/60 shadow-[0_0_20px_rgba(232,163,61,0.2)]' 
             : 'bg-surface border-border-dark hover:border-border-dark/80'
@@ -241,22 +254,60 @@ export default function AudioNarrationPlayer({
           {isSpeaking ? (isPaused ? 'Paused' : 'Narrating...') : 'Listen'}
         </button>
 
-        {/* Speed Selector (1x, 1.25x, 1.5x) */}
-        <div className="flex items-center border-l border-border-dark/60 pl-2 ml-0.5 gap-1">
-          {[1.0, 1.25, 1.5].map((rate) => (
-            <button
-              key={rate}
-              onClick={() => handleRateChange(rate)}
-              className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer transition-colors ${
-                playbackRate === rate 
-                  ? 'bg-accent text-charcoal' 
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-              title={`Playback speed: ${rate}x`}
+        {/* Compact Speed Dropdown (Saves space) */}
+        <div className="relative border-l border-border-dark/60 pl-2 ml-0.5">
+          <button
+            onClick={() => {
+              setShowSpeedMenu(prev => !prev);
+              setShowVoiceMenu(false);
+            }}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-accent hover:bg-[#262930] cursor-pointer transition-colors"
+            title="Narration speed"
+          >
+            <span>{playbackRate}x</span>
+            <svg 
+              className={`w-2.5 h-2.5 text-text-muted transition-transform duration-200 ${showSpeedMenu ? 'rotate-180 text-accent' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
             >
-              {rate}x
-            </button>
-          ))}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Speed Dropdown Menu Popover */}
+          <AnimatePresence>
+            {showSpeedMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                className="absolute left-1/2 -translate-x-1/2 top-8 z-40 w-24 p-1.5 rounded-xl bg-[#15171A] border border-border-dark shadow-2xl backdrop-blur-md"
+              >
+                <div className="text-[9px] uppercase tracking-wider text-text-muted font-bold px-2 py-0.5 border-b border-border-dark/50 mb-1 text-center">
+                  Speed
+                </div>
+                <div className="space-y-0.5">
+                  {[0.75, 1.0, 1.25, 1.5, 2.0].map((rate) => (
+                    <button
+                      key={rate}
+                      onClick={() => {
+                        handleRateChange(rate);
+                        setShowSpeedMenu(false);
+                      }}
+                      className={`w-full text-center px-2 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                        playbackRate === rate
+                          ? 'bg-accent text-charcoal'
+                          : 'text-text-muted hover:bg-[#262930] hover:text-text-primary'
+                      }`}
+                    >
+                      {rate}x
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Auto-Advance Story Reel Toggle */}
@@ -279,7 +330,10 @@ export default function AudioNarrationPlayer({
         {availableVoices.length > 1 && (
           <div className="relative">
             <button
-              onClick={() => setShowVoiceMenu(prev => !prev)}
+              onClick={() => {
+                setShowVoiceMenu(prev => !prev);
+                setShowSpeedMenu(false);
+              }}
               className="p-1 rounded text-text-muted hover:text-text-primary cursor-pointer transition-colors"
               title="Select Voice"
             >
