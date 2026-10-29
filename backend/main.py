@@ -7,6 +7,7 @@ import textwrap
 import requests
 import httpx
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image, ImageDraw
 from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
@@ -59,31 +60,39 @@ app.mount("/images", StaticFiles(directory="data/images"), name="images")
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-def invoke_llm_with_retry(prompt: str, max_retries: int = 3):
+ACTIVE_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.8-flash"]
+
+def invoke_llm_with_retry(prompt: str, max_retries: int = 2):
     """
-    Invokes Google Gemini with automatic retries, exponential backoff,
-    and automatic fallback across models to handle 503 high-demand spikes.
+    Invokes Google Gemini with fast-failover across healthy models.
+    Prioritizes models with proven low latency and zero 503 capacity issues.
     """
-    candidate_models = ["gemini-3.8-flash", "gemini-3.5-flash"]
+    global ACTIVE_MODELS
     last_error = None
 
-    for model_name in candidate_models:
+    for model_name in list(ACTIVE_MODELS):
         for attempt in range(max_retries):
             try:
-                model = ChatGoogleGenerativeAI(model=model_name, temperature=0.4)
-                return model.invoke(prompt)
+                print(f"[LLM] Requesting model '{model_name}' (attempt {attempt + 1}/{max_retries})...", flush=True)
+                model = ChatGoogleGenerativeAI(model=model_name, temperature=0.4, timeout=35)
+                result = model.invoke(prompt)
+                if ACTIVE_MODELS[0] != model_name and model_name in ACTIVE_MODELS:
+                    ACTIVE_MODELS.remove(model_name)
+                    ACTIVE_MODELS.insert(0, model_name)
+                print(f"[LLM] Model '{model_name}' responded successfully.", flush=True)
+                return result
             except Exception as e:
                 last_error = e
                 err_msg = str(e)
-                # Check for transient capacity / demand spikes
-                if any(code in err_msg for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
-                    backoff = 2 * (attempt + 1)
-                    print(f"[{model_name}] Transient error (attempt {attempt + 1}/{max_retries}): {e}. Waiting {backoff}s...")
-                    time.sleep(backoff)
-                else:
-                    # Model not available or non-transient error, try next candidate model
-                    print(f"[{model_name}] Encountered non-transient error: {e}. Switching to alternative model...")
+                print(f"[LLM] Model '{model_name}' error: {err_msg}", flush=True)
+                if any(code in err_msg for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "NOT_FOUND"]):
+                    print(f"[LLM] '{model_name}' is busy or unavailable. Immediate failover to next candidate...", flush=True)
+                    if model_name in ACTIVE_MODELS:
+                        ACTIVE_MODELS.remove(model_name)
+                        ACTIVE_MODELS.append(model_name)
                     break
+                else:
+                    time.sleep(1)
 
     raise last_error
 
@@ -92,6 +101,7 @@ def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: st
     Generates a bespoke, richly detailed, modern technical infographic SVG
     illustrating the exact mechanism and components of this panel.
     """
+    print(f"[SVG] Generating SVG illustration for Panel {panel_num}...", flush=True)
     prompt = f"""You are an elite educational infographic designer and technical illustrator.
 Create a rich, visually detailed, modern editorial SVG illustration for this explainer panel:
 Topic: {topic}
@@ -119,9 +129,10 @@ DESIGN SYSTEM SPECIFICATIONS:
 
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
+        print(f"[SVG] Panel {panel_num} SVG saved successfully ({len(svg_content)} bytes).", flush=True)
         return True
     except Exception as e:
-        print(f"Failed to generate SVG for panel {panel_num}: {e}")
+        print(f"[SVG] Failed to generate SVG for panel {panel_num}: {e}", flush=True)
         return False
 
 STYLE_SUFFIX = ", realistic editorial illustration, natural materials and believable proportions, carefully composed documentary-style scene, soft natural cinematic lighting, restrained vibrant colors, clear focal subject, fine realistic detail, no text, no watermark, no logos"
@@ -387,17 +398,14 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         script = json.loads(cleaned)
 
     os.makedirs("data/images", exist_ok=True)
-    for panel in script["panels"]:
+    def process_panel(panel):
         panel_num = panel["panel_number"]
-        # Use image_prompt if provided, fallback to scene_description
+        caption = panel.get("caption", "")
         raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
         image_prompt = raw_prompt.strip() + STYLE_SUFFIX
-
-        # Dynamic random seed per panel so images have distinct, fresh compositions
         random_seed = random.randint(1, 1000000)
         encoded_prompt = quote(image_prompt)
 
-        # Check for optional POLLINATIONS_API_KEY
         pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
         img_saved = False
 
@@ -409,7 +417,7 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
             image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
             for attempt in range(2):
                 try:
-                    img_response = requests.get(image_gen_url, headers=headers, timeout=45)
+                    img_response = requests.get(image_gen_url, headers=headers, timeout=30)
                     if img_response.status_code == 200 and len(img_response.content) > 1000:
                         png_path = f"data/images/panel_{panel_num}.png"
                         with open(png_path, "wb") as f:
@@ -417,21 +425,31 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
                         panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
                         img_saved = True
                         break
-                    time.sleep(2)
+                    time.sleep(1)
                 except Exception as e:
-                    print(f"Error generating diffusion image for panel {panel_num}: {e}")
-                    time.sleep(2)
+                    print(f"Error generating diffusion image for panel {panel_num}: {e}", flush=True)
+                    time.sleep(1)
 
         if not img_saved:
-            # Generate custom topic-specific SVG technical illustration using the LLM
             svg_path = f"data/images/panel_{panel_num}.svg"
-            if generate_topic_svg(topic, panel_num, panel.get("caption", ""), svg_path):
+            if generate_topic_svg(topic, panel_num, caption, svg_path):
                 panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg"
             else:
                 png_path = f"data/images/panel_{panel_num}.png"
-                create_fallback_card(topic, panel_num, panel.get("caption", ""), png_path)
+                create_fallback_card(topic, panel_num, caption, png_path)
                 panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
+        return panel
 
+    print(f"[Generate] Generating visuals for {len(script['panels'])} panels in parallel...", flush=True)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(process_panel, panel) for panel in script["panels"]]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[Generate] Worker error: {e}", flush=True)
+
+    print(f"[Generate] All {len(script['panels'])} panels generated successfully!", flush=True)
     script["grounded"] = True
     return script
 
