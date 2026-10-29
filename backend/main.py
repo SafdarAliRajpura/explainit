@@ -104,32 +104,32 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
     """
     combined = f"{topic} {caption}".lower()
 
-    # 1. Biology & Life Sciences (Photosynthesis, Cells, CRISPR, DNA, Ecology, Medicine)
+    # 1. Biology & Life Sciences (Photosynthesis, Cells, Plants, Animals, Medicine)
     bio_keywords = [
         "photosynthesis", "chlorophyll", "chloroplast", "thylakoid", "plant", "leaf",
         "cell", "dna", "rna", "crispr", "gene", "protein", "enzyme", "glucose",
         "mitochondria", "respiration", "bacteria", "virus", "vaccine", "immune",
-        "organism", "biology", "calvin cycle", "krebs", "neuron", "synapse", "botanical"
+        "organism", "biology", "calvin", "sugar", "botanical"
     ]
     if any(k in combined for k in bio_keywords):
         return {
-            "domain": "BIOLOGY & NATURAL LIFE SCIENCES",
+            "domain": "BIOLOGY & NATURE",
             "bg_color": "#0B1410",
-            "primary_accent": "#10B981",  # Vibrant emerald green
-            "secondary_accent": "#F59E0B", # Radiant solar gold
-            "tertiary_accent": "#38BDF8",  # Water / fluid azure
+            "primary_accent": "#10B981",  # Emerald leaf green
+            "secondary_accent": "#F59E0B", # Golden sunlight
+            "tertiary_accent": "#38BDF8",  # Water cyan
             "visual_guidance": """
-- DOMAIN DIRECTIVES (BIOLOGY / NATURAL SCIENCE):
-  * Draw REAL, RECOGNIZABLE natural & biological elements directly corresponding to this panel!
-  * For Solar / Light energy: Draw radiant solar rays and glowing golden photon beams (#F59E0B).
-  * For Plant / Cellular anatomy: Draw lush stylized botanical leaf cross-sections, chloroplast membranes, thylakoid disk stacks, and organic cellular walls using vivid emerald & jade greens (#10B981, #22C55E).
-  * For Molecules & Chemical reactions: Draw clear labeled molecular badges for H2O (water entering), CO2 (carbon dioxide diffusion), O2 (oxygen bubbles releasing), ATP/NADPH energy carriers, and C6H12O6 (glucose sugar synthesis).
-  * Use smooth organic curved flow pathways and fluid arrows for transport and chemical conversion.
-  * FORBIDDEN: Absolutely NO microchips, NO circuit boards, NO server cylinders, and NO computer motherboard components!
+- VISUAL STORYTELLING (BIOLOGY/NATURE):
+  * Make it intuitive, tangible, and practical! Anyone without biology knowledge must understand it in 2 seconds.
+  * For Light: Draw a big radiant golden Sun (☀️) with warm glowing rays.
+  * For Plants: Draw a lush, friendly green leaf (🍃) or plant sprouting with clean cellular cutaways.
+  * For Inputs: Draw clear water droplets (💧 'Water In') and breezy air arrows ('Fresh Air / CO2').
+  * For Outputs: Draw floating oxygen bubbles (🫧 'Oxygen Out') and sweet energy stars/fruit ('Plant Food / Sugar').
+  * FORBIDDEN: Do NOT draw complex enzyme chains, NO biochemical pathway names (PS II, Cyt b6f, RuBisCO), NO molecular formulas, and NO equations.
 """
         }
 
-    # 2. Physics, Chemistry, Astronomy & Materials
+    # 2. Physics, Space, Energy & Chemistry
     physics_keywords = [
         "atom", "nuclear", "fusion", "fission", "quantum", "gravity", "electron", "proton",
         "neutron", "particle", "magnetic", "electromagnetic", "wave", "laser", "photon",
@@ -138,20 +138,20 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
     ]
     if any(k in combined for k in physics_keywords):
         return {
-            "domain": "PHYSICS, CHEMISTRY & ASTRONOMY",
+            "domain": "PHYSICS & SPACE",
             "bg_color": "#0B0F19",
-            "primary_accent": "#A855F7",  # Plasma violet
+            "primary_accent": "#A855F7",  # Cosmic violet
             "secondary_accent": "#06B6D4", # Electric cyan
-            "tertiary_accent": "#F59E0B",  # High-energy amber
+            "tertiary_accent": "#F59E0B",  # Energy amber
             "visual_guidance": """
-- DOMAIN DIRECTIVES (PHYSICS / CHEMISTRY):
-  * Draw physical atoms, orbiting electron shells, nuclear cores, energy transitions, and molecular bonds.
-  * Depict field lines, wave oscillations, thermodynamic gradients, pressure chambers, and magnetic flux loops.
-  * Use radiant glow filters for high-energy reactions and particle trajectories.
+- VISUAL STORYTELLING (PHYSICS/ENERGY):
+  * Draw physical, recognizable visual metaphors: glowing particle spheres, magnetic field ripples, and clean energy flows.
+  * Use clear spatial comparisons: before vs after, hot vs cold, attract vs repel.
+  * FORBIDDEN: NO calculus equations, NO complex tensor formulas, NO obscure quantum wavefunctions.
 """
         }
 
-    # 3. Computer Science, AI, Systems & Math
+    # 3. Computer Science, AI & Technology
     cs_keywords = [
         "rag", "gan", "llm", "neural", "transformer", "attention", "embedding", "vector",
         "database", "faiss", "index", "blockchain", "hash", "crypto", "docker", "container",
@@ -163,25 +163,28 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
             "bg_color": "#15171A",
             "primary_accent": "#38BDF8",  # Cyber cyan
             "secondary_accent": "#E8A33D", # Amber gold
-            "tertiary_accent": "#10B981",  # Emerald node
+            "tertiary_accent": "#10B981",  # Emerald success
             "visual_guidance": """
-- DOMAIN DIRECTIVES (COMPUTER SCIENCE & AI):
-  * Visually illustrate the data architecture: transformer blocks, query tokens, embedding coordinate spaces, cosine distance vectors, index retrieval cylinders, and encoder-decoder pipelines.
-  * Show data flowing along directional bus lines with glowing pulse indicators.
+- VISUAL STORYTELLING (COMPUTER SCIENCE & AI):
+  * Use practical, intuitive visual analogies!
+  * For queries/prompts: Draw a user question bubble or digital fingerprint.
+  * For retrieval/search: Draw a focused magnifying glass or scanner over indexed books/cards with glowing matches.
+  * For generation: Draw an accurate verified answer card with green citation badges.
+  * FORBIDDEN: NO dense code blocks, NO mathematical vector arrays, NO confusing matrix math.
 """
         }
 
-    # 4. Default / Engineering / General Concept
+    # 4. Default / General Mechanism
     return {
-        "domain": "ENGINEERING & GENERAL SCIENCE",
+        "domain": "GENERAL MECHANISM",
         "bg_color": "#15171A",
         "primary_accent": "#E8A33D",
         "secondary_accent": "#38BDF8",
         "tertiary_accent": "#10B981",
         "visual_guidance": """
-- DOMAIN DIRECTIVES (GENERAL MECHANISM):
-  * Illustrate the tangible physical process and functional mechanism described in the caption.
-  * Use clear labeled components, progressive directional arrows, structural cutaways, and input-process-output stages.
+- VISUAL STORYTELLING (GENERAL):
+  * Draw clean, friendly real-world objects illustrating the core practical action.
+  * Show a clear visual progression: Input -> Action -> Result with bold arrows.
 """
     }
 
@@ -206,7 +209,7 @@ def build_fallback_svg(topic: str, panel_num: int, caption: str) -> str:
   <rect x="24" y="24" width="752" height="752" rx="16" fill="none" stroke="#262930" stroke-width="2"/>
   
   <rect x="60" y="55" width="130" height="28" rx="14" fill="#262930" stroke="#E8A33D" stroke-width="1.5"/>
-  <text x="125" y="74" fill="#E8A33D" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1.5">PANEL {panel_num} OF 3</text>
+  <text x="125" y="74" fill="#E8A33D" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1.5">STEP {panel_num}</text>
   
   <text x="60" y="130" fill="#F2F1ED" font-family="system-ui, sans-serif" font-size="26" font-weight="700">{clean_topic}</text>
   
@@ -269,8 +272,8 @@ def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str
 
 def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str) -> bool:
     """
-    Generates a bespoke, richly detailed, domain-adaptive technical SVG illustration
-    accurately depicting the exact mechanism, components, and real-world objects of this panel.
+    Generates a visual-first, beginner-friendly, practical SVG illustration.
+    Emphasizes bold pictorial icons, intuitive visual metaphors, and strictly minimal words.
     """
     print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}'...", flush=True)
     domain_info = detect_topic_domain(topic, caption)
@@ -281,29 +284,31 @@ def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: st
     tert = domain_info["tertiary_accent"]
     guidance = domain_info["visual_guidance"]
 
-    prompt = f"""You are an elite educational infographic designer and scientific illustrator.
-Create an intuitive, beautiful, and visually clear SVG illustration for this explainer panel:
-TOPIC: {topic}
-DOMAIN: {domain_name}
-PANEL {panel_num} OF 3: {caption}
+    prompt = f"""You are a world-class visual explainer and infographic illustrator for general audiences (like Kurzgesagt or Vox).
+Your goal is to explain this concept visually so that ANY everyday person with ZERO technical knowledge can understand it immediately in 2 seconds.
 
-DESIGN SYSTEM SPECIFICATIONS:
-- Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
-- Background: Base <rect width="800" height="800" fill="{bg_color}"/> with subtle structural framing or background atmosphere filling all 800x800 edge-to-edge.
-- Accent Colors: Primary: {prim}, Secondary: {sec}, Tertiary: {tert}, Text: #F2F1ED and #8B8D93.
-- FULL CANVAS UTILIZATION:
-  * Diagram components, nodes, and pathways should boldly span the full space (usable active area: x: 25 to 775, y: 25 to 775).
-  * Do NOT leave giant empty margins. Fill the card edge-to-edge with balanced, readable proportions.
-  * Ensure text stays inside x: 25 to 775 so no characters are clipped.
-- LAYOUT ZONES:
-  * Header zone (y: 35 to 85): Step badge ("STAGE {panel_num}") and clear diagram title.
-  * Diagram body (y: 105 to 725): Visually illustrate the core process with labeled components, directional arrows, and clear spatial relationships.
-  * Footer zone (y: 735 to 775): Formula, status pill, or component highlight bar.
+TOPIC: {topic}
+PANEL {panel_num} OF 3: {caption}
+DOMAIN: {domain_name}
+
+CRITICAL "PRACTICAL & EASY TO UNDERSTAND" DESIGN RULES:
+1. VISUAL FIRST, MINIMAL WORDS:
+   - Maximum 4 to 6 simple, friendly words in the ENTIRE illustration!
+   - Examples of good labels: "Sunlight", "Water In", "Green Leaf", "Energy", "Fresh Oxygen", "Sugar Food".
+   - ABSOLUTE BAN: NO chemical equations, NO mathematical formulas (like 6CO2 + 6H2O -> ...), NO academic jargon (like photolysis, Calvin cycle equations, stroma matrix, ETC pumps), and NO tiny fine-print sentences. The user reads the caption on the side for details; the graphic must be a pure, self-explanatory visual metaphor!
+2. BOLD & RECOGNIZABLE GRAPHICS:
+   - Draw LARGE, friendly, colorful pictorial shapes: radiant glowing sun, a lush green leaf, clean water droplets, buoyant oxygen bubbles, warm energy rays.
+   - Use big, clear directional arrows showing the natural flow of ingredients transforming into results.
+3. CANVAS SPECIFICATIONS:
+   - Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+   - Background: <rect width="800" height="800" fill="{bg_color}"/> with subtle warm ambient atmosphere filling 800x800 edge-to-edge.
+   - Palette: Primary: {prim}, Secondary: {sec}, Tertiary: {tert}, Text: #F2F1ED.
+   - Keep text inside x: 30 to 770 so nothing clips at the borders.
+   - Header: Simple badge ("STEP {panel_num}") and clean short title (2-4 words max).
 {guidance}
-- CRITICAL XML COMPLIANCE:
-  * Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
-  * All ampersands in text MUST be written as &amp; (never write a raw &).
-  * Do NOT use obscure unprintable Unicode characters. Use standard legible ASCII labels.
+4. STRICT XML FORMAT:
+   - Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
+   - Every ampersand must be written as &amp;.
 """
     try:
         response = invoke_llm_with_retry(prompt)
