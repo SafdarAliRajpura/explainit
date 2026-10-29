@@ -228,8 +228,8 @@ export default function ComicReader({ panels, topic, onReset }) {
 
       <div className="w-full flex flex-col lg:flex-row gap-10 lg:gap-14 items-stretch">
         
-        {/* Left Side: Image Container */}
-        <div className="group w-full lg:w-[52%] relative overflow-hidden rounded-2xl border border-border-dark shadow-2xl bg-[#121417] aspect-square max-h-[580px] flex items-center justify-center shrink-0 p-3 sm:p-5">
+        {/* Left Side: Image Container (Edge-to-Edge) */}
+        <div className="group w-full lg:w-[50%] relative overflow-hidden rounded-2xl border border-border-dark shadow-2xl bg-surface aspect-square flex items-center justify-center shrink-0">
           <AnimatePresence mode="wait" custom={direction}>
             {currentPanel?.image_url ? (
               <motion.div
@@ -239,12 +239,12 @@ export default function ComicReader({ panels, topic, onReset }) {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="w-full h-full flex items-center justify-center relative"
+                className="w-full h-full relative flex items-center justify-center"
               >
                 <img 
                   src={currentPanel.image_url}
                   alt={`Panel ${currentIndex + 1}`}
-                  className="w-full h-full object-contain rounded-xl select-none"
+                  className="w-full h-full object-cover select-none"
                 />
 
                 {/* Full Resolution Expand Button */}
@@ -276,7 +276,7 @@ export default function ComicReader({ panels, topic, onReset }) {
         </div>
 
         {/* Right Side: Content & Controls */}
-        <div className="w-full lg:w-[48%] flex flex-col justify-between py-2 lg:py-4">
+        <div className="w-full lg:w-[50%] flex flex-col justify-between py-2 lg:py-4">
           
           {/* Animated Text Content */}
           <div className="flex-1 flex flex-col justify-center">
