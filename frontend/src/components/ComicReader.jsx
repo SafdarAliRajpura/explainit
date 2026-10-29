@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Quiz from './Quiz';
+import AudioNarrationPlayer from './AudioNarrationPlayer';
 
 const ChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -19,6 +20,15 @@ export default function ComicReader({ panels, topic, onReset }) {
   const [direction, setDirection] = useState(1);
   const [showQuiz, setShowQuiz] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleOpenQuiz = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setShowQuiz(true);
+  };
 
   // LinkedIn State
   const [linkedinConnected, setLinkedinConnected] = useState(false);
@@ -190,7 +200,7 @@ export default function ComicReader({ panels, topic, onReset }) {
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
       {/* Top Header */}
-      <div className="w-full flex justify-between items-start mb-8">
+      <div className="w-full flex justify-between items-center mb-8 flex-wrap gap-4">
         {/* Verified Source Indicator */}
         <div className="inline-flex items-center gap-3 px-1.5 py-1.5 rounded-full border border-border-dark bg-surface shadow-sm">
           <div className="flex items-center gap-2.5 bg-charcoal px-4 py-1.5 rounded-full border border-border-dark/50 shadow-inner">
@@ -205,8 +215,19 @@ export default function ComicReader({ panels, topic, onReset }) {
           </span>
         </div>
 
-        {/* LinkedIn Connection Indicator */}
-        <div className="flex items-center pt-2">
+        {/* Right Header Actions: AI Audio Narrator + LinkedIn */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <AudioNarrationPlayer
+            panels={panels}
+            currentIndex={currentIndex}
+            onGoToPanel={goToPanel}
+            isSpeaking={isSpeaking}
+            setIsSpeaking={setIsSpeaking}
+          />
+
+          <div className="h-4 w-[1px] bg-border-dark hidden sm:block" />
+
+          {/* LinkedIn Connection Indicator */}
           {linkedinConnected ? (
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.3)]"></span>
@@ -220,7 +241,7 @@ export default function ComicReader({ panels, topic, onReset }) {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
               </svg>
-              Connect LinkedIn
+              <span className="hidden sm:inline">Connect LinkedIn</span>
             </button>
           )}
         </div>
@@ -228,8 +249,31 @@ export default function ComicReader({ panels, topic, onReset }) {
 
       <div className="w-full flex flex-col lg:flex-row gap-10 lg:gap-14 items-stretch">
         
-        {/* Left Side: Image Container (Edge-to-Edge) */}
-        <div className="group w-full lg:w-[50%] relative overflow-hidden rounded-2xl border border-border-dark shadow-2xl bg-surface aspect-square flex items-center justify-center shrink-0">
+        {/* Left Side: Image Container (Edge-to-Edge with Ambient Sound Glow) */}
+        <div className={`group w-full lg:w-[50%] relative overflow-hidden rounded-2xl border transition-all duration-500 shadow-2xl bg-surface aspect-square flex items-center justify-center shrink-0 ${
+          isSpeaking 
+            ? 'border-accent/70 shadow-[0_0_35px_rgba(232,163,61,0.22)] ring-1 ring-accent/40' 
+            : 'border-border-dark'
+        }`}>
+          {/* Active Narration Pulse Tag */}
+          <AnimatePresence>
+            {isSpeaking && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="absolute top-3 left-3 z-20 flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#0B0C0E]/90 border border-accent/40 shadow-lg backdrop-blur-md"
+              >
+                <div className="flex items-center gap-0.5 h-3">
+                  <span className="w-1 bg-accent rounded-full animate-pulse h-2"></span>
+                  <span className="w-1 bg-accent rounded-full animate-pulse h-3"></span>
+                  <span className="w-1 bg-accent rounded-full animate-pulse h-2.5"></span>
+                  <span className="w-1 bg-accent rounded-full animate-pulse h-1.5"></span>
+                </div>
+                <span className="text-[10px] font-semibold tracking-wider text-accent uppercase">Narrating</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence mode="wait" custom={direction}>
             {currentPanel?.image_url ? (
               <motion.div
@@ -369,7 +413,7 @@ export default function ComicReader({ panels, topic, onReset }) {
             <div className="pt-8 border-t border-border-dark flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* PRIMARY — Test Yourself */}
               <motion.button
-                onClick={() => setShowQuiz(true)}
+                onClick={handleOpenQuiz}
                 whileHover={{ scale: 1.02, filter: 'brightness(1.1)' }}
                 whileTap={{ scale: 0.98 }}
                 className="flex items-center justify-center gap-2 bg-accent text-charcoal font-medium text-sm px-8 py-3.5 rounded-xl cursor-pointer transition-colors"
@@ -382,7 +426,13 @@ export default function ComicReader({ panels, topic, onReset }) {
 
               {/* GHOST — Explain another topic */}
               <motion.button
-                onClick={onReset}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                  }
+                  setIsSpeaking(false);
+                  onReset();
+                }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="group relative flex items-center justify-center gap-2.5 px-8 py-3.5 border border-border-dark bg-surface text-text-muted rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 hover:shadow-[0_0_15px_rgba(232,163,61,0.15)] transition-all duration-300"
