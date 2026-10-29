@@ -952,6 +952,60 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
     return {"success": True, "message": "Posted to LinkedIn successfully."}
 
 
+class LinkedInCopyRequest(BaseModel):
+    topic: str
+    panels: list = []
+
+@app.post("/generate-linkedin-copy")
+def generate_linkedin_copy(request: LinkedInCopyRequest):
+    topic = request.topic
+    panel_texts = "\n".join([f"Step {p.get('panel_number', i+1)}: {p.get('caption', '')}" for i, p in enumerate(request.panels)])
+    
+    prompt = f"""You are a top-tier educational LinkedIn creator.
+Write a high-converting, viral LinkedIn post hook, key takeaways, and call-to-action for an illustrated carousel about:
+TOPIC: {topic}
+
+PANEL STEPS:
+{panel_texts}
+
+REQUIREMENTS:
+1. Hook: Engaging 1-2 sentence opening hook with an emoji that stops the scroll.
+2. Bullets: 3 concise, punchy bullet points summarizing the 3 steps with an emoji each.
+3. CTA: Friendly call to action telling the reader to swipe through the carousel PDF and save the post.
+4. Hashtags: 4-5 relevant industry/topic hashtags (including #ExplainIT).
+
+Return ONLY valid JSON in this exact structure:
+{{
+  "hook": "Ever wondered how ...? Here is the 3-step visual breakdown: 👇",
+  "takeaways": [
+    "🔍 Step 1: ...",
+    "⚙️ Step 2: ...",
+    "✅ Step 3: ..."
+  ],
+  "cta": "Swipe through the carousel above 👆 for the full visual story! Save this post 📌 so you don't lose it.",
+  "hashtags": ["#ExplainIT", "#VisualLearning", "#TechExplainer"]
+}}
+"""
+    try:
+        response = invoke_llm_with_retry(prompt)
+        raw = response.content
+        if isinstance(raw, list):
+            raw = "".join([b["text"] for b in raw if isinstance(b, dict) and b.get("type") == "text"])
+        cleaned = str(raw).strip().strip("```json").strip("```").strip()
+        data = json.loads(cleaned)
+        return data
+    except Exception as e:
+        print(f"[LinkedIn Copy] Fallback triggered: {e}", flush=True)
+        return {
+            "hook": f"Visual breakdown: How {topic} really works in 3 clear steps: 👇",
+            "takeaways": [
+                f"Step {p.get('panel_number', i+1)}: {p.get('caption', '')}" for i, p in enumerate(request.panels)
+            ],
+            "cta": "Swipe through the carousel above 👆 to see the full illustrated breakdown! Save 📌 and share with your network.",
+            "hashtags": ["#ExplainIT", "#VisualLearning", "#Infographics", "#Education"]
+        }
+
+
 @app.post("/upload-source")
 async def upload_source(file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".txt", ".pdf")):
