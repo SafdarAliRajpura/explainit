@@ -7,7 +7,8 @@ import textwrap
 import requests
 import httpx
 import urllib.parse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -97,39 +98,88 @@ app.mount("/images", StaticFiles(directory="data/images"), name="images")
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-ACTIVE_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.8-flash"]
+ACTIVE_MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
+active_models_lock = threading.Lock()
 
-def invoke_llm_with_retry(prompt: str, max_retries: int = 2):
+def _call_model_single(model_name: str, prompt: str):
+    model = ChatGoogleGenerativeAI(model=model_name, temperature=0.4)
+    return model.invoke(prompt)
+
+def invoke_with_hard_timeout(func, args, timeout_sec=25):
     """
-    Invokes Google Gemini with fast-failover across healthy models.
-    Prioritizes models with proven low latency and zero 503 capacity issues.
+    Executes a function in a daemon thread with an absolute, unbreakable timeout.
+    Unlike ThreadPoolExecutor, this never blocks on thread termination if a remote socket hangs.
+    """
+    res = [None]
+    err = [None]
+    done = threading.Event()
+
+    def worker():
+        try:
+            res[0] = func(*args)
+        except Exception as e:
+            err[0] = e
+        finally:
+            done.set()
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+    if not done.wait(timeout=timeout_sec):
+        raise TimeoutError(f"Operation timed out after {timeout_sec}s")
+    if err[0] is not None:
+        raise err[0]
+    return res[0]
+
+def invoke_llm_with_retry(prompt: str, max_retries: int = 1, timeout_per_call: int = 25):
+    """
+    Invokes Google Gemini with guaranteed daemon hard timeout and instant failover across healthy models.
+    Prioritizes gemini-3.5-flash for fastest response times.
     """
     global ACTIVE_MODELS
     last_error = None
 
-    for model_name in list(ACTIVE_MODELS):
+    with active_models_lock:
+        models_to_try = list(ACTIVE_MODELS)
+
+    for model_name in models_to_try:
         for attempt in range(max_retries):
+            print(f"[LLM] Requesting model '{model_name}' (timeout: {timeout_per_call}s)...", flush=True)
             try:
-                print(f"[LLM] Requesting model '{model_name}' (attempt {attempt + 1}/{max_retries})...", flush=True)
-                model = ChatGoogleGenerativeAI(model=model_name, temperature=0.4, timeout=35)
-                result = model.invoke(prompt)
-                if ACTIVE_MODELS[0] != model_name and model_name in ACTIVE_MODELS:
-                    ACTIVE_MODELS.remove(model_name)
-                    ACTIVE_MODELS.insert(0, model_name)
+                result = invoke_with_hard_timeout(_call_model_single, (model_name, prompt), timeout_sec=timeout_per_call)
+
+                # Prioritize successfully responding model at head of list
+                with active_models_lock:
+                    if ACTIVE_MODELS and ACTIVE_MODELS[0] != model_name and model_name in ACTIVE_MODELS:
+                        ACTIVE_MODELS.remove(model_name)
+                        ACTIVE_MODELS.insert(0, model_name)
+
                 print(f"[LLM] Model '{model_name}' responded successfully.", flush=True)
                 return result
+
+            except TimeoutError:
+                last_error = TimeoutError(f"Call to '{model_name}' timed out after {timeout_per_call}s")
+                print(f"[LLM] Hard timeout ({timeout_per_call}s) on '{model_name}'. Immediate failover to next model...", flush=True)
+                with active_models_lock:
+                    if model_name in ACTIVE_MODELS:
+                        ACTIVE_MODELS.remove(model_name)
+                        ACTIVE_MODELS.append(model_name)
+                break
+
             except Exception as e:
                 last_error = e
                 err_msg = str(e)
                 print(f"[LLM] Model '{model_name}' error: {err_msg}", flush=True)
-                if any(code in err_msg for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "NOT_FOUND"]):
-                    print(f"[LLM] '{model_name}' is busy or unavailable. Immediate failover to next candidate...", flush=True)
-                    if model_name in ACTIVE_MODELS:
-                        ACTIVE_MODELS.remove(model_name)
-                        ACTIVE_MODELS.append(model_name)
+
+                failover_codes = ["503", "504", "DEADLINE_EXCEEDED", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "NOT_FOUND", "TIMEOUT"]
+                if any(code in err_msg for code in failover_codes):
+                    print(f"[LLM] '{model_name}' experienced capacity/deadline issue. Immediate failover...", flush=True)
+                    with active_models_lock:
+                        if model_name in ACTIVE_MODELS:
+                            ACTIVE_MODELS.remove(model_name)
+                            ACTIVE_MODELS.append(model_name)
                     break
                 else:
-                    time.sleep(1)
+                    time.sleep(0.5)
 
     raise last_error
 
