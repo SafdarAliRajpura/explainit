@@ -256,15 +256,20 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
 
 def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str, sec: str, tert: str) -> dict:
     """
-    Selects the optimal geometric layout archetype and generates explicit coordinate budgets
-    to guarantee zero text overlap, accurate entity count, and balanced visual alignment.
+    Selects a distinct, creative, domain-authentic geometric layout archetype for each panel.
+    Guarantees that every panel in the 3-panel sequence has a UNIQUE creative visual structure:
+    - Panel 1: Input / Setup / Query Interface (The Starting Point)
+    - Panel 2: Deep Mechanism / Radar / Transformation Matrix (The Core Engine)
+    - Panel 3: Verified Synthesis / Certificate / Payoff (The Grounded Result)
     """
     combined = f"{topic} {caption}".lower()
+    domain_info = detect_topic_domain(topic, caption)
+    domain_name = domain_info["domain"]
 
-    # 1. Stacked Tiers / Pyramids / Social Hierarchies / 3 Estates / Layered Systems
+    # 1. SPECIFIC STRUCTURAL OVERRIDES (If explicitly requested in caption)
     tier_pattern = re.compile(
-        r'\b(three estates|3 estates|first estate|second estate|third estate|estates|hierarchy|hierarchical|'
-        r'social classes|pyramid|strata|layered|solid.*liquid.*gas|three states|troposphere|stratosphere|3 tiers|three tiers)\b',
+        r'(three estates|3 estates|first estate|second estate|third estate|estates|hierarchy|hierarchical|'
+        r'social classes|pyramid|strata|layered|solid.*liquid.*gas|three states|troposphere|stratosphere|3 tiers|three tiers)',
         re.IGNORECASE
     )
     if tier_pattern.search(combined):
@@ -304,16 +309,188 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 """
         }
 
-    # 2. 2-Column Comparison / Split / Balance / Versus
-    split_pattern = re.compile(
-        r'\b(war costs?.*tax|empty coffers?|unfair tax|versus|vs|compare|comparison|two sides|'
-        r'supply and demand|generator.*discriminator|before.*after|cause and effect|debt.*tax|imbalance|balance scale)\b',
-        re.IGNORECASE
-    )
-    if split_pattern.search(combined):
-        return {
-            "archetype_name": "2_COLUMN_SPLIT",
-            "layout_instructions": f"""
+    # 2. COMPUTER SCIENCE, AI & ALGORITHMS (RAG, GANs, LLMs, Neural Nets)
+    if domain_name == "COMPUTER SCIENCE & AI":
+        if panel_num == 1:
+            return {
+                "archetype_name": "CS_INPUT_QUERY_INTERFACE",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: CS_INPUT_QUERY_INTERFACE (User Query Interface & Input Flow)
+  Focus EXCLUSIVELY on the user's question, prompt, or starting request. DO NOT draw the whole pipeline!
+  * Top Card (User Query Dialogue Card):
+    - Container: <rect x="90" y="160" width="620" height="180" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Speech Bubble / Search Icon: Centered at (cx: 170, cy: 250) with clean dialogue bubble shape and question mark '?'.
+    - Query Label: <text x="240" y="215" fill="#F2F1ED" font-size="20" font-weight="800">User Prompt / Query</text>
+    - Mock Input Field: <rect x="240" y="235" width="430" height="48" rx="10" fill="#0F1117" stroke="#2D3748" stroke-width="1.5"/>
+      <text x="260" y="265" fill="{prim}" font-size="14" font-family="monospace">"What are the verified facts about this topic?"</text>
+    - Subtext Badge: <rect x="240" y="295" width="160" height="24" rx="12" fill="{prim}" opacity="0.2"/>
+      <text x="320" y="311" fill="{prim}" font-size="11" font-weight="700" text-anchor="middle">Input Intent &amp; Search</text>
+  * Central Connecting Pulse:
+    - Downward signal arrow from (400, 345) to (400, 420) with dashed stroke="{prim}" stroke-width="4".
+    - Pulse indicator: <circle cx="400" cy="382" r="16" fill="#1F2937" stroke="{prim}" stroke-width="2"/>
+      <text x="400" y="387" fill="{prim}" font-size="14" font-weight="800" text-anchor="middle">↓</text>
+  * Bottom Card (Knowledge Pool / Target Corpus):
+    - Container: <rect x="90" y="420" width="620" height="210" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Left Graphic: Stacked index book / vector database cube grid at (cx: 200, cy: 520).
+    - Right Text Block:
+      * Section Title: <text x="310" y="480" fill="#F2F1ED" font-size="20" font-weight="800">Unstructured Knowledge Base</text>
+      * Status Pills:
+        <rect x="310" y="505" width="220" height="30" rx="8" fill="{sec}" opacity="0.2"/>
+        <text x="420" y="525" fill="{sec}" font-size="13" font-weight="700" text-anchor="middle">Indexed Document Library</text>
+        <rect x="310" y="545" width="220" height="30" rx="8" fill="#3B82F6" opacity="0.2"/>
+        <text x="420" y="565" fill="#3B82F6" font-size="13" font-weight="700" text-anchor="middle">Awaiting Targeted Search</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 1: The user initiates a query that requires accurate retrieval</text>
+"""
+            }
+        elif panel_num == 2:
+            return {
+                "archetype_name": "CS_VECTOR_RADAR_SCANNER",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: CS_VECTOR_RADAR_SCANNER (Vector Embedding & Search Scanner)
+  Focus EXCLUSIVELY on the search, scanning, and chunk comparison mechanism!
+  * Left Column (Query Vector Beacon):
+    - Container: <rect x="60" y="160" width="200" height="460" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Header Badge: <rect x="85" y="185" width="150" height="28" rx="14" fill="{sec}" opacity="0.2"/>
+      <text x="160" y="204" fill="{sec}" font-size="12" font-weight="700" text-anchor="middle">QUERY EMBEDDING</text>
+    - Icon: Mathematical vector arrow / beacon emitting scanner rays centered at (cx: 160, cy: 330).
+    - Status Badge: <rect x="80" y="460" width="160" height="32" rx="8" fill="#0F1117" stroke="{sec}" stroke-width="1.5"/>
+      <text x="160" y="481" fill="#F2F1ED" font-size="13" font-weight="700" text-anchor="middle">Semantic Vector [v]</text>
+  * Center Column (Vector Radar Space / Scanner Matrix):
+    - Container: <rect x="280" y="160" width="240" height="460" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Header Badge: <rect x="310" y="185" width="180" height="28" rx="14" fill="{prim}" opacity="0.2"/>
+      <text x="400" y="204" fill="{prim}" font-size="12" font-weight="700" text-anchor="middle">SIMILARITY SCANNER</text>
+    - Circular Radar Matrix:
+      * Outer circle: <circle cx="400" cy="330" r="85" fill="#0F1117" stroke="{prim}" stroke-width="2" stroke-dasharray="6 4"/>
+      * Scanner sweep beam: Semi-transparent sector sweep with glowing focal point at (cx: 420, cy: 310).
+      * Vector points: Coordinate dots in space with distance connection lines.
+    - Status Badge: <rect x="305" y="460" width="190" height="32" rx="8" fill="#0F1117" stroke="{prim}" stroke-width="1.5"/>
+      <text x="400" y="481" fill="#F2F1ED" font-size="13" font-weight="700" text-anchor="middle">Cosine Distance Match</text>
+  * Right Column (Top Matched Chunks):
+    - Container: <rect x="540" y="160" width="200" height="460" rx="16" fill="#161B26" stroke="{tert}" stroke-width="2"/>
+    - Header Badge: <rect x="565" y="185" width="150" height="28" rx="14" fill="{tert}" opacity="0.2"/>
+      <text x="640" y="204" fill="{tert}" font-size="12" font-weight="700" text-anchor="middle">RELEVANT CHUNKS</text>
+    - Top Match 1: <rect x="560" y="250" width="160" height="70" rx="10" fill="#0F1117" stroke="{tert}" stroke-width="1.5"/>
+      <text x="640" y="278" fill="{tert}" font-size="14" font-weight="800" text-anchor="middle">Chunk #1: 98% Match</text>
+      <text x="640" y="300" fill="#8B8D93" font-size="11" text-anchor="middle">Exact Source Match</text>
+    - Top Match 2: <rect x="560" y="340" width="160" height="70" rx="10" fill="#0F1117" stroke="{tert}" stroke-width="1.5"/>
+      <text x="640" y="368" fill="{tert}" font-size="14" font-weight="800" text-anchor="middle">Chunk #2: 94% Match</text>
+      <text x="640" y="390" fill="#8B8D93" font-size="11" text-anchor="middle">Contextual Match</text>
+    - Status Badge: <rect x="560" y="460" width="160" height="32" rx="8" fill="{tert}" opacity="0.2"/>
+      <text x="640" y="481" fill="{tert}" font-size="13" font-weight="700" text-anchor="middle">Ranked &amp; Extracted</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 2: Vector search identifies the most accurate chunks from the database</text>
+"""
+            }
+        else: # panel_num == 3
+            return {
+                "archetype_name": "CS_GROUNDED_VERIFIED_DOCUMENT",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: CS_GROUNDED_VERIFIED_DOCUMENT (Verified Output Certificate with Citations)
+  Focus EXCLUSIVELY on the grounded verified output and citation proof!
+  * Top Card (Synthesis Engine - Context Injected):
+    - Container: <rect x="90" y="160" width="620" height="120" rx="14" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Left Graphic: Retrieved Context Chunks + LLM Reasoning Core (cx: 170, cy: 220) with glowing spark/node icon.
+    - Right Text:
+      * <text x="250" y="205" fill="#F2F1ED" font-size="18" font-weight="800">Augmented Prompt Synthesis</text>
+      * <rect x="250" y="220" width="240" height="26" rx="6" fill="{sec}" opacity="0.2"/>
+        <text x="370" y="238" fill="{sec}" font-size="12" font-weight="700" text-anchor="middle">Context Injected into LLM</text>
+  * Connecting Verification Arrow:
+    - Downward arrow from (400, 280) to (400, 325) with checkmark circle at (400, 303).
+  * Main Hero Certificate (The Grounded Output Document):
+    - Container: <rect x="120" y="325" width="560" height="300" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2.5"/>
+    - Document Header:
+      * Green Verification Shield: <circle cx="170" cy="370" r="22" fill="#10B981" opacity="0.2"/>
+        <path d="M 160 370 L 167 377 L 180 364" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+      * Document Title: <text x="210" y="375" fill="#F2F1ED" font-size="20" font-weight="800">Grounded Factual Answer</text>
+    - Mock Text Lines (Clear Verified Document):
+      * Line 1: <rect x="170" y="415" width="460" height="12" rx="6" fill="#2D3748"/>
+      * Line 2: <rect x="170" y="440" width="420" height="12" rx="6" fill="#2D3748"/>
+      * Line 3: <rect x="170" y="465" width="340" height="12" rx="6" fill="#2D3748"/>
+    - Grounding Citation Badges:
+      * Badge 1: <rect x="170" y="505" width="160" height="32" rx="8" fill="#10B981" opacity="0.2"/>
+        <text x="250" y="526" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">✓ [1] Verified Citation</text>
+      * Badge 2: <rect x="350" y="505" width="160" height="32" rx="8" fill="#38BDF8" opacity="0.2"/>
+        <text x="430" y="526" fill="#38BDF8" font-size="12" font-weight="700" text-anchor="middle">✓ [2] Primary Source</text>
+    - Seal: <rect x="170" y="560" width="460" height="36" rx="8" fill="#0F1117" stroke="#10B981" stroke-width="1.5"/>
+      <text x="400" y="583" fill="#10B981" font-size="13" font-weight="800" text-anchor="middle">100% FACTUAL • ZERO HALLUCINATIONS</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#10B981" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 3: The model produces an authentic answer backed by retrieved evidence</text>
+"""
+            }
+
+    # 3. BIOLOGY & LIFE SCIENCES (Photosynthesis, Cells, Genetics)
+    elif domain_name == "BIOLOGY & LIFE SCIENCES":
+        if panel_num == 1:
+            return {
+                "archetype_name": "BIO_INPUT_ABSORPTION",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: BIO_INPUT_ABSORPTION (Natural Energy & Resource Inputs)
+  Focus EXCLUSIVELY on the raw inputs being absorbed!
+  * Top-Left Radiant Sun: Golden sun at (cx: 200, cy: 230) radiating warm sunlight rays downward toward the leaf.
+  * Top-Right Water & Atmosphere: Droplets of water (💧 'Water In') and CO2 molecules drifting into the scene.
+  * Center-Bottom Hero Leaf Surface: Large vibrant leaf cutaway (x: 100 to 700, y: 380 to 620) with veins absorbing nutrients.
+  * Floating Badges:
+    - <rect x="120" y="320" width="160" height="32" rx="16" fill="{prim}" opacity="0.2"/>
+      <text x="200" y="341" fill="{prim}" font-size="13" font-weight="700" text-anchor="middle">Sunlight Energy</text>
+    - <rect x="520" y="320" width="160" height="32" rx="16" fill="{tert}" opacity="0.2"/>
+      <text x="600" y="341" fill="{tert}" font-size="13" font-weight="700" text-anchor="middle">Water &amp; CO2 In</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 1: Leaves absorb sunlight energy, carbon dioxide, and root moisture</text>
+"""
+            }
+        elif panel_num == 2:
+            return {
+                "archetype_name": "BIO_CHLOROPLAST_ENGINE",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: BIO_CHLOROPLAST_ENGINE (Cellular Factory & Conversion)
+  Focus EXCLUSIVELY on the microscopic transformation happening inside the cell!
+  * Central Hero Cutaway: Large circular chloroplast membrane cutaway centered at (cx: 400, cy: 380) with r: 180.
+  * Inside Chloroplast:
+    - Thylakoid coin stacks on left (cx: 320, cy: 380) converting light photons into chemical energy.
+    - Calvin cycle circular reaction wheel on right (cx: 470, cy: 380) assembling sugars.
+  * Status Pills:
+    - <rect x="150" y="180" width="220" height="34" rx="17" fill="{prim}" opacity="0.2"/>
+      <text x="260" y="202" fill="{prim}" font-size="13" font-weight="700" text-anchor="middle">Light Reactions (Thylakoids)</text>
+    - <rect x="430" y="180" width="220" height="34" rx="17" fill="{sec}" opacity="0.2"/>
+      <text x="540" y="202" fill="{sec}" font-size="13" font-weight="700" text-anchor="middle">Calvin Cycle (Sugar Wheel)</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 2: Microscopic cellular machinery transforms light into chemical food</text>
+"""
+            }
+        else: # panel_num == 3
+            return {
+                "archetype_name": "BIO_THRIVING_PAYOFF",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: BIO_THRIVING_PAYOFF (Oxygen Release & Plant Food)
+  Focus EXCLUSIVELY on the final products that sustain life!
+  * Left Output Card (Fresh Oxygen Released):
+    - Container: <rect x="70" y="180" width="310" height="440" rx="16" fill="#161B26" stroke="{tert}" stroke-width="2"/>
+    - Floating oxygen bubbles drifting upward into clean blue sky.
+    - Badge: <rect x="105" y="470" width="240" height="36" rx="8" fill="{tert}" opacity="0.2"/>
+      <text x="225" y="493" fill="{tert}" font-size="14" font-weight="700" text-anchor="middle">Fresh Oxygen Released (O2)</text>
+  * Right Output Card (Glucose / Plant Sugar Fuel):
+    - Container: <rect x="420" y="180" width="310" height="440" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Radiant golden energy crystal / plant sugar star.
+    - Badge: <rect x="455" y="470" width="240" height="36" rx="8" fill="{sec}" opacity="0.2"/>
+      <text x="575" y="493" fill="{sec}" font-size="14" font-weight="700" text-anchor="middle">Plant Food &amp; Energy (Sugar)</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 3: Plants release clean oxygen into the atmosphere and nourish growth</text>
+"""
+            }
+
+    # 4. HISTORY, POLITICS & SOCIETY
+    elif domain_name == "HISTORY, POLITICS & SOCIETY":
+        if panel_num == 1:
+            return {
+                "archetype_name": "2_COLUMN_SPLIT",
+                "layout_instructions": f"""
 - MANDATORY GEOMETRIC LAYOUT: 2_COLUMN_SPLIT (Balanced Side-by-Side Symmetrical Columns)
   Compare cause and effect side-by-side with equal balance:
   * Left Card (Cause / Debt / Input):
@@ -340,18 +517,47 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
     - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
     - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Heavy war expenses triggered extreme, unequal taxation</text>
 """
-        }
-
-    # 3. Hero Dramatic Event / Overthrow / Revolution / Single Hero Cutaway
-    hero_pattern = re.compile(
-        r'\b(revolution|overthrow|outbreak|storming|bastille|fall of|battle|uprising|rebellion|'
-        r'leaf cutaway|cell cutaway|fusion reactor|cross section)\b',
-        re.IGNORECASE
-    )
-    if hero_pattern.search(combined):
-        return {
-            "archetype_name": "HERO_FOCUS_CALLOUTS",
-            "layout_instructions": f"""
+            }
+        elif panel_num == 2:
+            return {
+                "archetype_name": "STACKED_3_TIERS",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: STACKED_3_TIERS (3 Distinct Cards Stacked Vertically)
+  The concept describes 3 distinct classes, tiers, states, or layers. You MUST draw all 3 distinct cards:
+  * Top Card (Tier 1 - 1st Estate / Clergy / Top Layer):
+    - Container: <rect x="180" y="150" width="440" height="90" rx="12" fill="#181D2A" stroke="{prim}" stroke-width="2"/>
+    - Left Icon: A church/cross/clergy icon centered at (cx: 230, cy: 195)
+    - Right Text Block:
+      * Card Title: <text x="280" y="185" fill="#F2F1ED" font-size="18" font-weight="700">1st Estate: Clergy</text>
+      * Pill Badge: <rect x="280" y="200" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
+                    <text x="370" y="217" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Privileged</text>
+  * Middle Card (Tier 2 - 2nd Estate / Nobility / Middle Layer):
+    - Container: <rect x="140" y="265" width="520" height="90" rx="12" fill="#181D2A" stroke="{sec}" stroke-width="2"/>
+    - Left Icon: A crown/sword/castle icon centered at (cx: 190, cy: 310)
+    - Right Text Block:
+      * Card Title: <text x="240" y="300" fill="#F2F1ED" font-size="18" font-weight="700">2nd Estate: Nobility</text>
+      * Pill Badge: <rect x="240" y="315" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
+                    <text x="330" y="332" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Feudal Rights</text>
+  * Crushing Burden Arrow (Middle to Bottom):
+    - A bold dashed red downward arrow: <path d="M 400 365 L 400 425" stroke="#EF4444" stroke-width="8" stroke-dasharray="8 6"/> with arrowhead at (400, 435).
+    - Centered Arrow Pill: <rect x="325" y="385" width="150" height="28" rx="6" fill="#0F1117" stroke="#EF4444" stroke-width="2"/>
+      <text x="400" y="404" fill="#EF4444" font-size="12" font-weight="700" text-anchor="middle">100% TAX BURDEN</text>
+  * Bottom Card (Tier 3 - 3rd Estate / Commoners - 97% of population bearing the weight):
+    - Container: <rect x="80" y="445" width="640" height="150" rx="14" fill="#1E283E" stroke="{tert}" stroke-width="2.5"/>
+    - Left Graphics: 4-5 worker/peasant person silhouettes in a row (cx: 140, 200, 260, 320, cy: 500)
+    - Right Text Block:
+      * Card Title: <text x="410" y="495" fill="#F2F1ED" font-size="22" font-weight="800">3rd Estate: Commoners</text>
+      * Description Pill: <rect x="410" y="515" width="260" height="32" rx="8" fill="#EF4444" opacity="0.2"/>
+        <text x="540" y="536" fill="#EF4444" font-size="13" font-weight="700" text-anchor="middle">97% of People • Pays All Taxes</text>
+  * Bottom Summary Pill:
+    - <rect x="120" y="650" width="560" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
+    - <text x="400" y="678" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Deep Inequality: The majority worked to fund the elite</text>
+"""
+            }
+        else: # panel_num == 3
+            return {
+                "archetype_name": "HERO_FOCUS_CALLOUTS",
+                "layout_instructions": f"""
 - MANDATORY GEOMETRIC LAYOUT: HERO_FOCUS_CALLOUTS (Centered Dramatic Scene with Anchored Callouts)
   Center the dramatic action along the central axis (x: 400) without disconnected floating stickers:
   * Top Focal Subject (Monarchy / Collapsing Old Order):
@@ -372,27 +578,58 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
     - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#EF4444" stroke-width="1.5"/>
     - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">July 1789: The People Rise to Claim Liberty and Equality</text>
 """
-        }
+            }
 
-    # 4. Sequential Flow / 3-Stage Pipeline (Default for processes)
-    return {
-        "archetype_name": "3_STAGE_FLOW",
-        "layout_instructions": f"""
-- MANDATORY GEOMETRIC LAYOUT: 3_STAGE_FLOW (Horizontal Symmetrical Pipeline)
-  A clean 3-stage process arranged horizontally:
-  * Stage 1 (Input): Card at <rect x="60" y="180" width="200" height="440" rx="14" fill="#161B26" stroke="{prim}" stroke-width="2"/>
-    - Inside Stage 1: Header pill at y: 205, Centered pictorial icon at (cx: 160, cy: 350, r: 55), Label pill at y: 490.
-  * Flow Arrow 1: <path d="M 270 380 L 295 380 M 287 372 L 295 380 L 287 388" stroke="#F2F1ED" stroke-width="4" stroke-linecap="round"/>
-  * Stage 2 (Process): Card at <rect x="300" y="180" width="200" height="440" rx="14" fill="#161B26" stroke="{sec}" stroke-width="2"/>
-    - Inside Stage 2: Header pill at y: 205, Centered pictorial icon at (cx: 400, cy: 350, r: 55), Label pill at y: 490.
-  * Flow Arrow 2: <path d="M 510 380 L 535 380 M 527 372 L 535 380 L 527 388" stroke="#F2F1ED" stroke-width="4" stroke-linecap="round"/>
-  * Stage 3 (Output): Card at <rect x="540" y="180" width="200" height="440" rx="14" fill="#161B26" stroke="{tert}" stroke-width="2"/>
-    - Inside Stage 3: Header pill at y: 205, Centered pictorial icon at (cx: 640, cy: 350, r: 55), Label pill at y: 490.
+    # 5. GENERAL PROCESS & MECHANISM (Every panel has a unique role)
+    else:
+        if panel_num == 1:
+            return {
+                "archetype_name": "GENERAL_INPUT_SETUP",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: GENERAL_INPUT_SETUP (The Problem & Starting State)
+  Focus strictly on the starting state or input! Do NOT draw future stages!
+  * Top Card (Starting Condition / User Need):
+    - Container: <rect x="90" y="160" width="620" height="200" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Icon at left (cx: 170, cy: 260) representing the starting condition or input.
+    - Title at (x: 250, y: 230), status pill at (x: 250, y: 270).
+  * Downward Connection Flow:
+    - Direct signal arrow pointing from top card to the bottom environment.
+  * Bottom Card (Initial Context / Resource Pool):
+    - Container: <rect x="90" y="420" width="620" height="210" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Graphic of initial materials / environment awaiting processing.
   * Bottom Summary Pill:
     - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step-by-step conversion from input to verified result</text>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 1: Establishing the baseline condition and input</text>
 """
-    }
+            }
+        elif panel_num == 2:
+            return {
+                "archetype_name": "GENERAL_TRANSFORMATION_ENGINE",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: GENERAL_TRANSFORMATION_ENGINE (The Transformation Core)
+  Focus strictly on the internal mechanism, reaction chamber, or processing engine!
+  * Central Transformation Core:
+    - Large circular or octagonal processing matrix centered at (cx: 400, cy: 380) with r: 170.
+    - Input feed arriving from left, active transformation gears/matrix in center, converted output emerging on right.
+  * Clear status badges indicating the active conversion taking place.
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 2: Core mechanism actively processes and transforms the input</text>
+"""
+            }
+        else: # panel_num == 3
+            return {
+                "archetype_name": "GENERAL_VERIFIED_OUTCOME",
+                "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: GENERAL_VERIFIED_OUTCOME (The Final Payoff & Verified Result)
+  Focus strictly on the final result, comparison, or verified achievement!
+  * Symmetrical Split (Before vs After, or Raw Input vs Final Achievement) or Hero Certificate showcase.
+  * Clean verification badges and achievement metrics.
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 3: Successful, verified outcome achieved</text>
+"""
+            }
 
 def build_fallback_svg(topic: str, panel_num: int, caption: str) -> str:
     """
