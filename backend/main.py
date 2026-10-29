@@ -8,6 +8,7 @@ import requests
 import httpx
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw
 from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
@@ -96,50 +97,229 @@ def invoke_llm_with_retry(prompt: str, max_retries: int = 2):
 
     raise last_error
 
+def detect_topic_domain(topic: str, caption: str) -> dict:
+    """
+    Classifies the topic into its authentic domain (Biology, Physics, CS/AI, or General)
+    so visual metaphors, palettes, and recognizable real-world elements match the subject perfectly.
+    """
+    combined = f"{topic} {caption}".lower()
+
+    # 1. Biology & Life Sciences (Photosynthesis, Cells, CRISPR, DNA, Ecology, Medicine)
+    bio_keywords = [
+        "photosynthesis", "chlorophyll", "chloroplast", "thylakoid", "plant", "leaf",
+        "cell", "dna", "rna", "crispr", "gene", "protein", "enzyme", "glucose",
+        "mitochondria", "respiration", "bacteria", "virus", "vaccine", "immune",
+        "organism", "biology", "calvin cycle", "krebs", "neuron", "synapse", "botanical"
+    ]
+    if any(k in combined for k in bio_keywords):
+        return {
+            "domain": "BIOLOGY & NATURAL LIFE SCIENCES",
+            "bg_color": "#0B1410",
+            "primary_accent": "#10B981",  # Vibrant emerald green
+            "secondary_accent": "#F59E0B", # Radiant solar gold
+            "tertiary_accent": "#38BDF8",  # Water / fluid azure
+            "visual_guidance": """
+- DOMAIN DIRECTIVES (BIOLOGY / NATURAL SCIENCE):
+  * Draw REAL, RECOGNIZABLE natural & biological elements directly corresponding to this panel!
+  * For Solar / Light energy: Draw radiant solar rays and glowing golden photon beams (#F59E0B).
+  * For Plant / Cellular anatomy: Draw lush stylized botanical leaf cross-sections, chloroplast membranes, thylakoid disk stacks, and organic cellular walls using vivid emerald & jade greens (#10B981, #22C55E).
+  * For Molecules & Chemical reactions: Draw clear labeled molecular badges for H2O (water entering), CO2 (carbon dioxide diffusion), O2 (oxygen bubbles releasing), ATP/NADPH energy carriers, and C6H12O6 (glucose sugar synthesis).
+  * Use smooth organic curved flow pathways and fluid arrows for transport and chemical conversion.
+  * FORBIDDEN: Absolutely NO microchips, NO circuit boards, NO server cylinders, and NO computer motherboard components!
+"""
+        }
+
+    # 2. Physics, Chemistry, Astronomy & Materials
+    physics_keywords = [
+        "atom", "nuclear", "fusion", "fission", "quantum", "gravity", "electron", "proton",
+        "neutron", "particle", "magnetic", "electromagnetic", "wave", "laser", "photon",
+        "thermodynamics", "entropy", "relativity", "black hole", "planet", "orbit",
+        "battery", "electrolyte", "ion", "chemistry", "reaction", "molecule", "plasma"
+    ]
+    if any(k in combined for k in physics_keywords):
+        return {
+            "domain": "PHYSICS, CHEMISTRY & ASTRONOMY",
+            "bg_color": "#0B0F19",
+            "primary_accent": "#A855F7",  # Plasma violet
+            "secondary_accent": "#06B6D4", # Electric cyan
+            "tertiary_accent": "#F59E0B",  # High-energy amber
+            "visual_guidance": """
+- DOMAIN DIRECTIVES (PHYSICS / CHEMISTRY):
+  * Draw physical atoms, orbiting electron shells, nuclear cores, energy transitions, and molecular bonds.
+  * Depict field lines, wave oscillations, thermodynamic gradients, pressure chambers, and magnetic flux loops.
+  * Use radiant glow filters for high-energy reactions and particle trajectories.
+"""
+        }
+
+    # 3. Computer Science, AI, Systems & Math
+    cs_keywords = [
+        "rag", "gan", "llm", "neural", "transformer", "attention", "embedding", "vector",
+        "database", "faiss", "index", "blockchain", "hash", "crypto", "docker", "container",
+        "kubernetes", "compiler", "cache", "network", "packet", "cpu", "gpu", "algorithm"
+    ]
+    if any(k in combined for k in cs_keywords):
+        return {
+            "domain": "COMPUTER SCIENCE & AI",
+            "bg_color": "#15171A",
+            "primary_accent": "#38BDF8",  # Cyber cyan
+            "secondary_accent": "#E8A33D", # Amber gold
+            "tertiary_accent": "#10B981",  # Emerald node
+            "visual_guidance": """
+- DOMAIN DIRECTIVES (COMPUTER SCIENCE & AI):
+  * Visually illustrate the data architecture: transformer blocks, query tokens, embedding coordinate spaces, cosine distance vectors, index retrieval cylinders, and encoder-decoder pipelines.
+  * Show data flowing along directional bus lines with glowing pulse indicators.
+"""
+        }
+
+    # 4. Default / Engineering / General Concept
+    return {
+        "domain": "ENGINEERING & GENERAL SCIENCE",
+        "bg_color": "#15171A",
+        "primary_accent": "#E8A33D",
+        "secondary_accent": "#38BDF8",
+        "tertiary_accent": "#10B981",
+        "visual_guidance": """
+- DOMAIN DIRECTIVES (GENERAL MECHANISM):
+  * Illustrate the tangible physical process and functional mechanism described in the caption.
+  * Use clear labeled components, progressive directional arrows, structural cutaways, and input-process-output stages.
+"""
+    }
+
+def build_fallback_svg(topic: str, panel_num: int, caption: str) -> str:
+    """
+    Constructs an editorial, guaranteed-valid SVG graphic directly in Python.
+    Guarantees 0% broken images even in edge-case network or parsing failures.
+    """
+    clean_topic = topic.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    clean_caption = caption.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    wrapped_lines = textwrap.wrap(clean_caption, width=46)[:4]
+    caption_tspan = "".join(f'<tspan x="60" dy="24">{line}</tspan>' for line in wrapped_lines)
+
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="fallbackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181B20"/>
+      <stop offset="100%" stop-color="#121417"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#fallbackGrad)"/>
+  <rect x="24" y="24" width="752" height="752" rx="16" fill="none" stroke="#262930" stroke-width="2"/>
+  
+  <rect x="60" y="55" width="130" height="28" rx="14" fill="#262930" stroke="#E8A33D" stroke-width="1.5"/>
+  <text x="125" y="74" fill="#E8A33D" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1.5">PANEL {panel_num} OF 3</text>
+  
+  <text x="60" y="130" fill="#F2F1ED" font-family="system-ui, sans-serif" font-size="26" font-weight="700">{clean_topic}</text>
+  
+  <circle cx="400" cy="400" r="160" fill="none" stroke="#262930" stroke-width="4"/>
+  <circle cx="400" cy="400" r="120" fill="none" stroke="#E8A33D" stroke-width="3" stroke-dasharray="8,6"/>
+  <circle cx="400" cy="400" r="60" fill="#262930" stroke="#38BDF8" stroke-width="2"/>
+  <circle cx="400" cy="400" r="18" fill="#10B981"/>
+
+  <text x="60" y="650" fill="#8B8D93" font-family="system-ui, sans-serif" font-size="15">
+    {caption_tspan}
+  </text>
+</svg>"""
+
+def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str) -> str:
+    """
+    Cleans, normalizes, escapes, and validates SVG XML markup.
+    Guarantees that the returned SVG is 100% valid XML and will never fail in a browser.
+    """
+    cleaned = raw.strip()
+
+    # Extract <svg>...</svg>
+    match = re.search(r'(<svg[\s\S]*?</svg>)', cleaned, re.IGNORECASE)
+    if match:
+        svg_content = match.group(1)
+    else:
+        svg_content = cleaned.replace('```xml', '').replace('```svg', '').replace('```', '').strip()
+        if not svg_content.startswith("<svg"):
+            svg_content = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">{svg_content}'
+        if not svg_content.endswith("</svg>"):
+            svg_content = f"{svg_content}</svg>"
+
+    # 1. Strip illegal XML control characters (keep tabs, newlines, carriage returns)
+    svg_content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', svg_content)
+
+    # 2. Fix unescaped ampersands in text or attribute values
+    # Replace '&' not followed by entity name like 'amp;', 'lt;', 'gt;', 'quot;', 'apos;', or numeric '#123;'
+    svg_content = re.sub(r'&(?!(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);)', '&amp;', svg_content)
+
+    # 3. Clean any corrupted Unicode replacement symbols
+    svg_content = svg_content.replace('\ufffd', '')
+
+    # 4. In-Memory XML Validation Pass
+    try:
+        ET.fromstring(svg_content)
+        return svg_content
+    except Exception as err:
+        print(f"[SVG Sanitizer] XML parse error in Panel {panel_num}: {err}. Attempting automated repair...", flush=True)
+
+        # Attempt recovery if unclosed tag
+        try:
+            if not svg_content.strip().endswith("</svg>"):
+                repaired = svg_content + "</svg>"
+                ET.fromstring(repaired)
+                return repaired
+        except Exception:
+            pass
+
+        print(f"[SVG Sanitizer] Building guaranteed emergency valid SVG for Panel {panel_num}...", flush=True)
+        return build_fallback_svg(topic, panel_num, caption)
+
 def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str) -> bool:
     """
-    Generates a bespoke, richly detailed, modern technical infographic SVG
-    illustrating the exact mechanism and components of this panel.
+    Generates a bespoke, richly detailed, domain-adaptive technical SVG illustration
+    accurately depicting the exact mechanism, components, and real-world objects of this panel.
     """
-    print(f"[SVG] Generating SVG illustration for Panel {panel_num}...", flush=True)
-    prompt = f"""You are an elite educational infographic designer and technical illustrator.
-Create a rich, visually detailed, modern editorial SVG illustration for this explainer panel:
-Topic: {topic}
-Panel {panel_num} of 3: {caption}
+    print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}'...", flush=True)
+    domain_info = detect_topic_domain(topic, caption)
+    domain_name = domain_info["domain"]
+    bg_color = domain_info["bg_color"]
+    prim = domain_info["primary_accent"]
+    sec = domain_info["secondary_accent"]
+    tert = domain_info["tertiary_accent"]
+    guidance = domain_info["visual_guidance"]
 
-DESIGN SYSTEM & FULL CANVAS SPECIFICATIONS:
+    prompt = f"""You are an elite educational infographic designer and scientific illustrator.
+Create an intuitive, beautiful, and visually clear SVG illustration for this explainer panel:
+TOPIC: {topic}
+DOMAIN: {domain_name}
+PANEL {panel_num} OF 3: {caption}
+
+DESIGN SYSTEM SPECIFICATIONS:
 - Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
-- Aesthetic: Premium dark-mode technical journal / editorial tech brand.
-- Background: Base <rect width="800" height="800" fill="#15171A"/> with subtle #262930 grid or structural framing filling all 800x800 edge-to-edge.
-- Accents: Vibrant amber (#E8A33D), cyan/blue (#38BDF8), emerald (#10B981) for key active nodes, glowing badges, and flow arrows.
-- FULL CANVAS UTILIZATION (EDGE-TO-EDGE):
-  * Utilize the entire 800x800 canvas. Diagram components, nodes, and pathways should boldly span the full space (usable active area: x: 20 to 780, y: 20 to 780).
-  * Do NOT leave giant empty margins or shrink diagrams into a small center island. Fill the card edge-to-edge with balanced, readable proportions.
-  * Ensure text stays inside x: 20 to 780 so no characters are clipped.
-- STRUCTURE & LAYOUT:
-  * Header zone (y: 35 to 90): Step label, e.g. "STAGE {panel_num}", and crisp diagram title.
-  * Diagram body (y: 110 to 730): Visually depict the EXACT mechanism, objects, data flow, and architecture described in the caption for "{topic}". Use labeled boxes, flowchart arrows, connecting pathways, glowing highlight rings, database cylinders, document cards, and transformer nodes matching this specific step.
-  * Footer zone (y: 740 to 780): Formula, status pill, or component highlight bar spanning across the bottom.
-- Typography: Clean, legible labels using system sans-serif fonts, with text colors #F2F1ED and #8B8D93.
-- Return ONLY the raw valid <svg>...</svg> XML markup. No explanation, no markdown backticks, no code fences.
+- Background: Base <rect width="800" height="800" fill="{bg_color}"/> with subtle structural framing or background atmosphere filling all 800x800 edge-to-edge.
+- Accent Colors: Primary: {prim}, Secondary: {sec}, Tertiary: {tert}, Text: #F2F1ED and #8B8D93.
+- FULL CANVAS UTILIZATION:
+  * Diagram components, nodes, and pathways should boldly span the full space (usable active area: x: 25 to 775, y: 25 to 775).
+  * Do NOT leave giant empty margins. Fill the card edge-to-edge with balanced, readable proportions.
+  * Ensure text stays inside x: 25 to 775 so no characters are clipped.
+- LAYOUT ZONES:
+  * Header zone (y: 35 to 85): Step badge ("STAGE {panel_num}") and clear diagram title.
+  * Diagram body (y: 105 to 725): Visually illustrate the core process with labeled components, directional arrows, and clear spatial relationships.
+  * Footer zone (y: 735 to 775): Formula, status pill, or component highlight bar.
+{guidance}
+- CRITICAL XML COMPLIANCE:
+  * Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
+  * All ampersands in text MUST be written as &amp; (never write a raw &).
+  * Do NOT use obscure unprintable Unicode characters. Use standard legible ASCII labels.
 """
     try:
         response = invoke_llm_with_retry(prompt)
         raw = "".join([b["text"] for b in response.content if isinstance(b, dict) and b.get("type") == "text"]) if isinstance(response.content, list) else str(response.content)
-        svg = raw.strip()
-        match = re.search(r'(<svg[\s\S]*?</svg>)', svg)
-        if match:
-            svg_content = match.group(1)
-        else:
-            svg_content = svg.replace('```xml', '').replace('```svg', '').replace('```', '').strip()
+        svg_content = sanitize_and_validate_svg(raw, topic, panel_num, caption)
 
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
-        print(f"[SVG] Panel {panel_num} SVG saved successfully ({len(svg_content)} bytes).", flush=True)
+        print(f"[SVG] Panel {panel_num} saved successfully ({len(svg_content)} bytes). Valid XML verified.", flush=True)
         return True
     except Exception as e:
-        print(f"[SVG] Failed to generate SVG for panel {panel_num}: {e}", flush=True)
-        return False
+        print(f"[SVG] Failed to generate SVG for panel {panel_num}: {e}. Writing emergency fallback...", flush=True)
+        fallback_svg = build_fallback_svg(topic, panel_num, caption)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(fallback_svg)
+        return True
 
 STYLE_SUFFIX = ", realistic editorial illustration, natural materials and believable proportions, carefully composed documentary-style scene, soft natural cinematic lighting, restrained vibrant colors, clear focal subject, fine realistic detail, no text, no watermark, no logos"
 GROUNDING_THRESHOLD = 1.0
