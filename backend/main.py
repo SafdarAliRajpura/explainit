@@ -254,6 +254,146 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
 """
     }
 
+def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str, sec: str, tert: str) -> dict:
+    """
+    Selects the optimal geometric layout archetype and generates explicit coordinate budgets
+    to guarantee zero text overlap, accurate entity count, and balanced visual alignment.
+    """
+    combined = f"{topic} {caption}".lower()
+
+    # 1. Stacked Tiers / Pyramids / Social Hierarchies / 3 Estates / Layered Systems
+    tier_pattern = re.compile(
+        r'\b(three estates|3 estates|first estate|second estate|third estate|estates|hierarchy|hierarchical|'
+        r'social classes|pyramid|strata|layered|solid.*liquid.*gas|three states|troposphere|stratosphere|3 tiers|three tiers)\b',
+        re.IGNORECASE
+    )
+    if tier_pattern.search(combined):
+        return {
+            "archetype_name": "STACKED_3_TIERS",
+            "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: STACKED_3_TIERS (3 Distinct Cards Stacked Vertically)
+  The concept describes 3 distinct classes, tiers, states, or layers. You MUST draw all 3 distinct cards:
+  * Top Card (Tier 1 - 1st Estate / Clergy / Top Layer):
+    - Container: <rect x="180" y="150" width="440" height="90" rx="12" fill="#181D2A" stroke="{prim}" stroke-width="2"/>
+    - Left Icon: A church/cross/clergy icon centered at (cx: 230, cy: 195)
+    - Right Text Block:
+      * Card Title: <text x="280" y="185" fill="#F2F1ED" font-size="18" font-weight="700">1st Estate: Clergy</text>
+      * Pill Badge: <rect x="280" y="200" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
+                    <text x="370" y="217" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Privileged</text>
+  * Middle Card (Tier 2 - 2nd Estate / Nobility / Middle Layer):
+    - Container: <rect x="140" y="265" width="520" height="90" rx="12" fill="#181D2A" stroke="{sec}" stroke-width="2"/>
+    - Left Icon: A crown/sword/castle icon centered at (cx: 190, cy: 310)
+    - Right Text Block:
+      * Card Title: <text x="240" y="300" fill="#F2F1ED" font-size="18" font-weight="700">2nd Estate: Nobility</text>
+      * Pill Badge: <rect x="240" y="315" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
+                    <text x="330" y="332" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Feudal Rights</text>
+  * Crushing Burden Arrow (Middle to Bottom):
+    - A bold dashed red downward arrow: <path d="M 400 365 L 400 425" stroke="#EF4444" stroke-width="8" stroke-dasharray="8 6"/> with arrowhead at (400, 435).
+    - Centered Arrow Pill: <rect x="325" y="385" width="150" height="28" rx="6" fill="#0F1117" stroke="#EF4444" stroke-width="2"/>
+      <text x="400" y="404" fill="#EF4444" font-size="12" font-weight="700" text-anchor="middle">100% TAX BURDEN</text>
+  * Bottom Card (Tier 3 - 3rd Estate / Commoners - 97% of population bearing the weight):
+    - Container: <rect x="80" y="445" width="640" height="150" rx="14" fill="#1E283E" stroke="{tert}" stroke-width="2.5"/>
+    - Left Graphics: 4-5 worker/peasant person silhouettes in a row (cx: 140, 200, 260, 320, cy: 500)
+    - Right Text Block:
+      * Card Title: <text x="410" y="495" fill="#F2F1ED" font-size="22" font-weight="800">3rd Estate: Commoners</text>
+      * Description Pill: <rect x="410" y="515" width="260" height="32" rx="8" fill="#EF4444" opacity="0.2"/>
+        <text x="540" y="536" fill="#EF4444" font-size="13" font-weight="700" text-anchor="middle">97% of People • Pays All Taxes</text>
+  * Bottom Summary Pill:
+    - <rect x="120" y="650" width="560" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
+    - <text x="400" y="678" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Deep Inequality: The majority worked to fund the elite</text>
+"""
+        }
+
+    # 2. 2-Column Comparison / Split / Balance / Versus
+    split_pattern = re.compile(
+        r'\b(war costs?.*tax|empty coffers?|unfair tax|versus|vs|compare|comparison|two sides|'
+        r'supply and demand|generator.*discriminator|before.*after|cause and effect|debt.*tax|imbalance|balance scale)\b',
+        re.IGNORECASE
+    )
+    if split_pattern.search(combined):
+        return {
+            "archetype_name": "2_COLUMN_SPLIT",
+            "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: 2_COLUMN_SPLIT (Balanced Side-by-Side Symmetrical Columns)
+  Compare cause and effect side-by-side with equal balance:
+  * Left Card (Cause / Debt / Input):
+    - Container: <rect x="70" y="160" width="310" height="460" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Card Header Badge: <rect x="100" y="185" width="150" height="30" rx="15" fill="{sec}" opacity="0.2"/>
+      <text x="175" y="205" fill="{sec}" font-size="12" font-weight="700" text-anchor="middle">WAR COSTS</text>
+    - Central Icon: Centered inside Left Card at (cx: 225, cy: 330) with r: 70 (e.g. Empty Royal Treasury Vault with low fallen coins).
+    - Status Badge: <rect x="110" y="450" width="230" height="36" rx="8" fill="#0F1117" stroke="{sec}" stroke-width="1.5"/>
+      <text x="225" y="473" fill="#F2F1ED" font-size="14" font-weight="700" text-anchor="middle">Empty State Treasury</text>
+    - Metric Pill: <text x="225" y="525" fill="#EF4444" font-size="13" font-weight="600" text-anchor="middle">Bankruptcy Imminent</text>
+  * Center Transition / Impact:
+    - Flow Arrow: <path d="M 390 390 L 410 390 M 403 383 L 410 390 L 403 397" stroke="#F2F1ED" stroke-width="4" stroke-linecap="round"/>
+    - Impact Badge: <circle cx="400" cy="340" r="18" fill="#1F2937" stroke="{tert}"/>
+      <text x="400" y="345" fill="{tert}" font-size="14" font-weight="800" text-anchor="middle">→</text>
+  * Right Card (Burden / Unfair Taxes / Output):
+    - Container: <rect x="420" y="160" width="310" height="460" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Card Header Badge: <rect x="450" y="185" width="150" height="30" rx="15" fill="{prim}" opacity="0.2"/>
+      <text x="525" y="205" fill="{prim}" font-size="12" font-weight="700" text-anchor="middle">UNFAIR TAXES</text>
+    - Central Icon: Centered inside Right Card at (cx: 575, cy: 330) with r: 70 (e.g. Tilted Scale of Injustice).
+    - Status Badge: <rect x="460" y="450" width="230" height="36" rx="8" fill="#0F1117" stroke="{prim}" stroke-width="1.5"/>
+      <text x="575" y="473" fill="#F2F1ED" font-size="14" font-weight="700" text-anchor="middle">Crushing Tax System</text>
+    - Metric Pill: <text x="575" y="525" fill="{tert}" font-size="13" font-weight="600" text-anchor="middle">Commoners Carry 100%</text>
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Heavy war expenses triggered extreme, unequal taxation</text>
+"""
+        }
+
+    # 3. Hero Dramatic Event / Overthrow / Revolution / Single Hero Cutaway
+    hero_pattern = re.compile(
+        r'\b(revolution|overthrow|outbreak|storming|bastille|fall of|battle|uprising|rebellion|'
+        r'leaf cutaway|cell cutaway|fusion reactor|cross section)\b',
+        re.IGNORECASE
+    )
+    if hero_pattern.search(combined):
+        return {
+            "archetype_name": "HERO_FOCUS_CALLOUTS",
+            "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: HERO_FOCUS_CALLOUTS (Centered Dramatic Scene with Anchored Callouts)
+  Center the dramatic action along the central axis (x: 400) without disconnected floating stickers:
+  * Top Focal Subject (Monarchy / Collapsing Old Order):
+    - Centered at x: 400, y: 170 to 250.
+    - Large golden royal crown tilted/falling (x: 400, y: 200) with glowing highlights.
+    - Anchored status pill directly under crown: <rect x="310" y="235" width="180" height="28" rx="14" fill="#1E222B" stroke="#EF4444" stroke-width="1.5"/>
+      <text x="400" y="253" fill="#EF4444" font-size="12" font-weight="700" text-anchor="middle">Monarchy Overthrown</text>
+  * Middle Dramatic Clash / Gate:
+    - Fortress stone battlements and archway centered at x: 400, y: 300 to 420.
+    - Energy spark / shattered chains / open iron gates centered at (cx: 400, cy: 380).
+  * Bottom Dynamic Advancing Crowd:
+    - Advancing crowd silhouettes centered at x: 400, y: 460 to 600.
+    - Dynamic crowd figures: Center leader holding flag high (x: 400, y: 490), flanked by supporters on left and right.
+    - Anchored crowd pill: <rect x="310" y="590" width="180" height="30" rx="15" fill="#3B82F6" opacity="0.2"/>
+      <text x="400" y="610" fill="#3B82F6" font-size="13" font-weight="800" text-anchor="middle">Third Estate United</text>
+  * ABSOLUTELY NO UNATTACHED FLOATING CORNER BADGES!
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#EF4444" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">July 1789: The People Rise to Claim Liberty and Equality</text>
+"""
+        }
+
+    # 4. Sequential Flow / 3-Stage Pipeline (Default for processes)
+    return {
+        "archetype_name": "3_STAGE_FLOW",
+        "layout_instructions": f"""
+- MANDATORY GEOMETRIC LAYOUT: 3_STAGE_FLOW (Horizontal Symmetrical Pipeline)
+  A clean 3-stage process arranged horizontally:
+  * Stage 1 (Input): Card at <rect x="60" y="180" width="200" height="440" rx="14" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Inside Stage 1: Header pill at y: 205, Centered pictorial icon at (cx: 160, cy: 350, r: 55), Label pill at y: 490.
+  * Flow Arrow 1: <path d="M 270 380 L 295 380 M 287 372 L 295 380 L 287 388" stroke="#F2F1ED" stroke-width="4" stroke-linecap="round"/>
+  * Stage 2 (Process): Card at <rect x="300" y="180" width="200" height="440" rx="14" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Inside Stage 2: Header pill at y: 205, Centered pictorial icon at (cx: 400, cy: 350, r: 55), Label pill at y: 490.
+  * Flow Arrow 2: <path d="M 510 380 L 535 380 M 527 372 L 535 380 L 527 388" stroke="#F2F1ED" stroke-width="4" stroke-linecap="round"/>
+  * Stage 3 (Output): Card at <rect x="540" y="180" width="200" height="440" rx="14" fill="#161B26" stroke="{tert}" stroke-width="2"/>
+    - Inside Stage 3: Header pill at y: 205, Centered pictorial icon at (cx: 640, cy: 350, r: 55), Label pill at y: 490.
+  * Bottom Summary Pill:
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step-by-step conversion from input to verified result</text>
+"""
+    }
+
 def build_fallback_svg(topic: str, panel_num: int, caption: str) -> str:
     """
     Constructs an editorial, guaranteed-valid SVG graphic directly in Python.
@@ -317,6 +457,11 @@ def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str
     # 3. Clean any corrupted Unicode replacement symbols
     svg_content = svg_content.replace('\ufffd', '')
 
+
+
+    # 4. Remove ghost shadow text with low opacity
+    svg_content = re.sub(r"""<text\b[^>]*\bopacity=['"](?:0\.[0-3]\d*|\.[0-3]\d*)['"][^>]*>[\s\S]*?<\/text>""", "", svg_content)
+
     # 4. In-Memory XML Validation Pass
     try:
         ET.fromstring(svg_content)
@@ -338,8 +483,8 @@ def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str
 
 def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str) -> bool:
     """
-    Generates a visual-first, beginner-friendly, practical SVG illustration.
-    Emphasizes bold pictorial icons, intuitive visual metaphors, and strictly minimal words.
+    Generates a visual-first, beginner-friendly, practical SVG illustration with
+    strict geometric layout archetypes to guarantee zero text overlap and perfect alignment.
     """
     print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}'...", flush=True)
     domain_info = detect_topic_domain(topic, caption)
@@ -350,38 +495,47 @@ def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: st
     tert = domain_info["tertiary_accent"]
     guidance = domain_info["visual_guidance"]
 
-    prompt = f"""You are a world-class visual explainer and infographic illustrator for general audiences (like Kurzgesagt or Vox).
-Your goal is to explain this concept visually so that ANY everyday person with ZERO technical knowledge can understand it immediately in 2 seconds.
+    archetype_info = detect_layout_archetype(topic, caption, panel_num, prim, sec, tert)
+    archetype_name = archetype_info["archetype_name"]
+    layout_guidance = archetype_info["layout_instructions"]
+
+    prompt = f"""You are a world-class visual explainer and infographic designer (like Kurzgesagt or Vox).
+Your goal is to explain this concept visually with PERFECT geometric alignment, zero text collisions, and complete concept accuracy.
 
 TOPIC: {topic}
 PANEL {panel_num} OF 3: {caption}
 DOMAIN: {domain_name}
+LAYOUT ARCHETYPE: {archetype_name}
 
-CRITICAL "PRACTICAL & EASY TO UNDERSTAND" DESIGN RULES:
-1. TOPIC-ACCURATE VISUAL STORYTELLING:
-   - Your illustration MUST directly depict the specific event or concept described in:
-     TOPIC: {topic}
-     PANEL {panel_num}: {caption}
-   - Draw tangible, recognizable real-world objects, subjects, and metaphors fitting the "{domain_name}" domain.
-   - NEVER draw leaves, plants, or sunlight unless the topic is specifically botany or photosynthesis.
-   - NEVER draw cosmic space, orbits, or quantum particles unless the topic is specifically astronomy or physics.
-2. VISUAL FIRST, MINIMAL WORDS (2-SECOND RULE):
-   - Maximum 3 to 5 simple, friendly words in the ENTIRE illustration!
-   - Examples of good labels: Short labels describing the specific elements shown (e.g., "Third Estate", "Taxes", "Storming", or "User Prompt", "Book Archive", "Verified Answer").
-   - ABSOLUTE BAN: NO chemical equations, NO mathematical formulas, NO long dense paragraphs, and NO tiny fine-print sentences. The user reads the caption on the side for details; the graphic must be a pure, self-explanatory visual infographic.
-3. BOLD & RECOGNIZABLE GRAPHICS:
-   - Draw LARGE, friendly, colorful pictorial shapes with clear silhouettes.
-   - Use big, clear directional arrows showing the natural flow from cause to effect, or before vs after.
-4. CANVAS SPECIFICATIONS:
-   - Root element: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
-   - Background: <rect width="800" height="800" fill="{bg_color}"/> with subtle warm ambient atmosphere filling 800x800 edge-to-edge.
+MANDATORY DESIGN & ALIGNMENT RULES:
+1. TOPIC-ACCURATE CONCEPT MAPPING:
+   - Your illustration MUST faithfully represent the specific details of:
+     "{caption}"
+   - If the caption mentions "three estates", "3 states", or 3 entities, you MUST draw all 3 distinct cards/tiers. Do NOT merge them!
+   - Draw recognizable real-world icons fitting the "{domain_name}" domain.
+2. ZERO TEXT OVERLAPS (SPATIAL SEPARATION):
+   - Icon coordinates and Text coordinates must NEVER be the same.
+   - Text must be placed in a dedicated slot (inside a label pill or with >= 25px clear vertical offset).
+   - NEVER place text inside an icon silhouette or path.
+   - NO GHOST TEXT: Output exactly ONE clean <text> tag per label. NEVER duplicate a label with opacity="0.15".
+3. NO FLOATING ORPHANS:
+   - Every icon or sub-element must be visually enclosed in its parent container card or centered in the scene.
+   - No floating badges in random corners.
+4. VISUAL FIRST, MINIMAL WORDS:
+   - Maximum 3 to 5 simple, friendly words per badge. No dense sentences or math formulas.
+5. CANVAS SPECIFICATIONS:
+   - Root: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+   - Background: <rect width="800" height="800" fill="{bg_color}"/>
    - Palette: Primary: {prim}, Secondary: {sec}, Tertiary: {tert}, Text: #F2F1ED.
-   - Keep text inside x: 30 to 770 so nothing clips at the borders.
-   - Header: Simple badge ("STEP {panel_num}") and clean short title (2-4 words max matching this panel).
+   - Header: Simple badge ("STEP {panel_num}") and clean short title (2-4 words max).
+
+{layout_guidance}
+
 {guidance}
-5. STRICT XML FORMAT:
-   - Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
-   - Every ampersand must be written as &amp;.
+
+STRICT XML FORMAT:
+- Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
+- Every ampersand must be written as &amp;.
 """
     try:
         response = invoke_llm_with_retry(prompt)
