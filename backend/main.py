@@ -1222,6 +1222,125 @@ Return ONLY valid JSON in this exact structure:
         }
 
 
+
+class SimulationRequest(BaseModel):
+    topic: str
+    panels: list = []
+
+@app.post("/generate-simulation")
+def generate_simulation(request: SimulationRequest):
+    topic = request.topic
+    panel_texts = "\n".join([f"Step {p.get('panel_number', i+1)}: {p.get('caption', '')}" for i, p in enumerate(request.panels)])
+    
+    prompt = f"""You are an elite scientific & engineering interactive simulation designer.
+Design a rich, interactive, real-time particle and system simulation for the topic:
+TOPIC: {topic}
+
+PANEL SUMMARY:
+{panel_texts}
+
+Create a fully functional interactive sandbox model with:
+1. title: Catchy name for the sandbox (e.g. "Chloroplast Photolysis & Calvin Sandbox" or "Vector Similarity & FAISS Index Sandbox")
+2. subtitle: 1 concise sentence explaining what experiment the user is running.
+3. nodes: 3 to 4 key conceptual stations (objects or stages in the system).
+   Each node must have:
+   - id: unique string (e.g. "source", "stage1", "stage2", "sink")
+   - label: clear readable name (e.g. "Photon Absorption", "Electron Transport", "Carbon Fixation")
+   - x: number from 15 to 85 (percentage X position across canvas)
+   - y: number from 25 to 75 (percentage Y position down canvas)
+   - color: hex color code (e.g. "#E8A33D", "#10B981", "#38BDF8", "#F59E0B")
+   - role: short 2-3 word description (e.g. "Energy Input", "Catalytic Converter", "Synthesis Hub")
+4. flows: 2 to 3 directed particle streams connecting nodes.
+   Each flow must have:
+   - from_node: source node id
+   - to_node: target node id
+   - particle_name: name of the flowing unit (e.g. "Photons", "Electrons", "CO2 Molecules", "Tokens", "Packets")
+   - color: hex color (e.g. "#FBBF24", "#34D399", "#60A5FA")
+   - speed_multiplier_param: id of the control slider that speeds up/slows down this flow (e.g. "param1")
+5. controls: 2 to 3 interactive sliders.
+   Each control must have:
+   - id: unique string, e.g. "param1", "param2", "param3"
+   - label: human-readable name (e.g. "Input Intensity", "Reaction Concentration", "System Temperature")
+   - min: number (e.g. 0)
+   - max: number (e.g. 100)
+   - default: number (e.g. 50)
+   - step: number (e.g. 1)
+   - unit: unit string (e.g. "%", "ppm", "°C", "kHz")
+   - description: 1 sentence explaining what physical effect this control has
+6. metrics: 2 to 3 real-time calculation formulas evaluated client-side.
+   Each metric must have:
+   - id: string
+   - label: name of KPI (e.g., "Net Output Rate", "System Efficiency", "Conversion Yield")
+   - formula_js: valid safe JavaScript expression using control IDs (param1, param2, etc.).
+     Example: "Math.round((param1 * 0.65 + param2 * 0.35) * 10) / 10"
+   - unit: unit string (e.g., "units/s", "%", "mol/hr")
+   - target_optimal: approximate optimal number
+7. presets: 3 experimental presets to test with 1-click.
+   Each preset must have:
+   - name: preset title (e.g. "Baseline Equilibrium", "High Capacity Stress", "Starvation State")
+   - description: brief note on what this scenario simulates
+   - values: dictionary mapping control id to value, e.g. {{"param1": 85, "param2": 20, "param3": 40}}
+8. live_insights: 3 dynamic observation statements triggered when parameters hit specific ranges.
+   Each insight must have:
+   - condition_js: safe JS boolean expression, e.g. "param1 < 25", "param1 > 75 && param2 < 30", "param2 > 80"
+   - text: 1-2 sentence real-time scientific insight explaining the biological, computational, or physical consequence.
+
+Return ONLY valid JSON in this exact structure with no markdown formatting and no code fences:
+{{
+  "title": "...",
+  "subtitle": "...",
+  "nodes": [...],
+  "flows": [...],
+  "controls": [...],
+  "metrics": [...],
+  "presets": [...],
+  "live_insights": [...]
+}}
+"""
+    try:
+        response = invoke_llm_with_retry(prompt)
+        raw = response.content
+        if isinstance(raw, list):
+            raw = "".join([b["text"] for b in raw if isinstance(b, dict) and b.get("type") == "text"])
+        cleaned = str(raw).strip().strip("```json").strip("```").strip()
+        data = json.loads(cleaned)
+        return data
+    except Exception as e:
+        print(f"[Simulator] Fallback triggered: {e}", flush=True)
+        return {
+            "title": f"{topic} Interactive Dynamics Sandbox",
+            "subtitle": f"Live simulation exploring the core state transformations and rate-limiting factors of {topic}.",
+            "nodes": [
+                {"id": "source", "label": "Primary Input", "x": 18, "y": 35, "color": "#E8A33D", "role": "Energy / Substrate Source"},
+                {"id": "process", "label": "Core Mechanism", "x": 50, "y": 50, "color": "#10B981", "role": "Catalytic Transformation"},
+                {"id": "sink", "label": "Synthesized Product", "x": 82, "y": 65, "color": "#38BDF8", "role": "Target Output State"}
+            ],
+            "flows": [
+                {"from_node": "source", "to_node": "process", "particle_name": "Input Energy Flux", "color": "#FBBF24", "speed_multiplier_param": "param1"},
+                {"from_node": "process", "to_node": "sink", "particle_name": "Transformed State", "color": "#34D399", "speed_multiplier_param": "param2"}
+            ],
+            "controls": [
+                {"id": "param1", "label": "Input Excitation Flux", "min": 0, "max": 100, "default": 55, "step": 1, "unit": "%", "description": f"Controls the rate of inbound excitation driving the initial stage of {topic}."},
+                {"id": "param2", "label": "Catalytic Substrate Density", "min": 10, "max": 100, "default": 60, "step": 1, "unit": "%", "description": "Adjusts the concentration of internal reaction agents facilitating transformation."},
+                {"id": "param3", "label": "Environmental Resistance", "min": 0, "max": 100, "default": 25, "step": 1, "unit": "%", "description": "Simulates drag, thermal dissipation, or latency inhibiting the system."}
+            ],
+            "metrics": [
+                {"id": "rate", "label": "Net Production Rate", "formula_js": "Math.round((param1 * 0.65 + param2 * 0.35) * (1 - param3 * 0.005) * 10) / 10", "unit": "units/s", "target_optimal": 65},
+                {"id": "efficiency", "label": "System Efficiency", "formula_js": "Math.max(5, Math.round(100 - (param3 * 0.7) - Math.abs(param1 - param2) * 0.3))", "unit": "%", "target_optimal": 85}
+            ],
+            "presets": [
+                {"name": "Balanced Equilibrium", "description": "Standard operating state with balanced input and processing capacity.", "values": {"param1": 60, "param2": 60, "param3": 15}},
+                {"name": "High-Throughput Surge", "description": "Maximum input flux pushing catalytic capacity to limits.", "values": {"param1": 95, "param2": 85, "param3": 35}},
+                {"name": "Depleted / High Drag", "description": "Low input flux coupled with severe environmental resistance.", "values": {"param1": 15, "param2": 25, "param3": 85}}
+            ],
+            "live_insights": [
+                {"condition_js": "param1 < 25", "text": "Low input energy: System is starved of excitation, causing output stages to idle."},
+                {"condition_js": "param1 > 80 && param2 < 40", "text": "Bottleneck detected: High incoming flux overwhelms catalytic capacity, leading to waste dissipation."},
+                {"condition_js": "param3 > 70", "text": "Excessive resistance: Environmental drag is drastically lowering overall net conversion efficiency."}
+            ]
+        }
+
+
 @app.post("/upload-source")
 async def upload_source(file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".txt", ".pdf")):

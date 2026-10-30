@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Quiz from './Quiz';
 import AudioNarrationPlayer from './AudioNarrationPlayer';
 import ShareStudioModal from './ShareStudioModal';
+import SimulatorSandbox from './SimulatorSandbox';
 
 const ChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -23,6 +24,7 @@ export default function ComicReader({ panels, topic, onReset }) {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showShareStudio, setShowShareStudio] = useState(false);
+  const [showSimulator, setShowSimulator] = useState(false);
 
   const handleOpenQuiz = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -201,6 +203,19 @@ export default function ComicReader({ panels, topic, onReset }) {
     );
   }
 
+  // ── Simulator Sandbox view ──────────────────────────────────────────────────
+  if (showSimulator) {
+    return (
+      <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
+        <SimulatorSandbox
+          topic={topic}
+          panels={panels}
+          onClose={() => setShowSimulator(false)}
+        />
+      </div>
+    );
+  }
+
   // ── Comic reader view ───────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
@@ -240,6 +255,24 @@ export default function ComicReader({ panels, topic, onReset }) {
               <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
             </svg>
             <span>Carousel Studio</span>
+          </button>
+
+          {/* Interactive Concept Simulator Action */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+              }
+              setIsSpeaking(false);
+              setShowSimulator(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#10B981]/40 bg-[#10B981]/10 hover:bg-[#10B981]/20 text-[#10B981] hover:border-[#10B981] text-xs font-semibold transition-all shadow-sm cursor-pointer"
+            title="Open Interactive Concept Simulator"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            <span>Simulator 🧪</span>
           </button>
 
           <div className="h-4 w-[1px] bg-border-dark hidden sm:block" />
@@ -439,6 +472,25 @@ export default function ComicReader({ panels, topic, onReset }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Test Yourself
+              </motion.button>
+
+              {/* SECONDARY — Try Simulator */}
+              <motion.button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                  }
+                  setIsSpeaking(false);
+                  setShowSimulator(true);
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center justify-center gap-2 border border-[#10B981]/40 bg-[#10B981]/10 hover:bg-[#10B981]/20 text-[#10B981] font-semibold text-sm px-6 py-3.5 rounded-xl cursor-pointer transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                Try Simulator 🧪
               </motion.button>
 
               {/* GHOST — Explain another topic */}
