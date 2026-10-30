@@ -28,6 +28,12 @@ export default function ShareStudioModal({
   const [directPostSuccess, setDirectPostSuccess] = useState(false);
   const [directPostError, setDirectPostError] = useState('');
 
+  // 1-Click Carousel post state
+  const [carouselPosting, setCarouselPosting] = useState(false);
+  const [carouselPostStep, setCarouselPostStep] = useState('');
+  const [carouselPostSuccess, setCarouselPostSuccess] = useState(false);
+  const [carouselPostError, setCarouselPostError] = useState('');
+
   const totalSlides = (panels?.length || 3) + 2; // Cover + Panels (3) + Summary Slide = 5
 
   // 1. Fetch AI-generated LinkedIn copy when modal opens
@@ -291,27 +297,32 @@ export default function ShareStudioModal({
     return canvas;
   };
 
+  // Helper: Build 5-page 1080x1350 PDF document
+  const buildCarouselPdf = async () => {
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: [1080, 1350],
+    });
+
+    for (let i = 0; i < totalSlides; i++) {
+      const slideCanvas = await renderSlideCanvas(i);
+      const imgData = slideCanvas.toDataURL('image/jpeg', 0.95);
+      if (i > 0) {
+        pdf.addPage([1080, 1350], 'portrait');
+      }
+      pdf.addImage(imgData, 'JPEG', 0, 0, 1080, 1350);
+    }
+    return pdf;
+  };
+
   // 3. Download Carousel PDF (5-page 1080x1350 multi-page PDF)
   const handleDownloadCarouselPdf = async () => {
     setIsGeneratingPdf(true);
     setPdfSuccess(false);
 
     try {
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [1080, 1350],
-      });
-
-      for (let i = 0; i < totalSlides; i++) {
-        const slideCanvas = await renderSlideCanvas(i);
-        const imgData = slideCanvas.toDataURL('image/jpeg', 0.95);
-        if (i > 0) {
-          pdf.addPage([1080, 1350], 'portrait');
-        }
-        pdf.addImage(imgData, 'JPEG', 0, 0, 1080, 1350);
-      }
-
+      const pdf = await buildCarouselPdf();
       const cleanName = topic.replace(/[^a-zA-Z0-9]/g, '_');
       pdf.save(`${cleanName}_LinkedIn_Carousel.pdf`);
       setPdfSuccess(true);
@@ -451,6 +462,69 @@ export default function ShareStudioModal({
       setTimeout(() => setDirectPostError(''), 4000);
     } finally {
       setDirectPosting(false);
+    }
+  };
+
+  // 7. 1-Click Publish Entire Carousel to LinkedIn
+  const handlePublishEntireCarousel = async () => {
+    if (!linkedinConnected) {
+      if (onConnectLinkedin) {
+        const connected = await onConnectLinkedin();
+        if (!connected) return;
+      } else {
+        setCarouselPostError('Please connect LinkedIn first');
+        return;
+      }
+    }
+
+    setCarouselPosting(true);
+    setCarouselPostError('');
+    setCarouselPostSuccess(false);
+
+    try {
+      setCarouselPostStep('Rendering 5-slide PDF...');
+      const pdf = await buildCarouselPdf();
+      const pdfBlob = pdf.output('blob');
+
+      setCarouselPostStep('Publishing carousel to LinkedIn...');
+      const formData = new FormData();
+      formData.append('file', pdfBlob, `${topic.replace(/[^a-zA-Z0-9]/g, '_')}_carousel.pdf`);
+
+      const fullText = postCopy ? [
+        postCopy.hook,
+        '',
+        ...(postCopy.takeaways || []),
+        '',
+        postCopy.cta,
+        '',
+        (postCopy.hashtags || []).join(' ')
+      ].join('\n') : `Visual breakdown of ${topic}`;
+
+      formData.append('commentary', fullText);
+      formData.append('title', `${topic} — Illustrated 3-Step Visual Carousel`);
+
+      const res = await fetch('http://localhost:8000/linkedin/post-carousel', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCarouselPostSuccess(true);
+        setCarouselPostStep('');
+        setTimeout(() => setCarouselPostSuccess(false), 5000);
+      } else {
+        console.error('LinkedIn carousel post failed:', data);
+        setCarouselPostError(data.message || 'Failed to publish carousel to LinkedIn');
+        setTimeout(() => setCarouselPostError(''), 5000);
+      }
+    } catch (err) {
+      console.error('Error publishing entire carousel:', err);
+      setCarouselPostError(err.message || 'Network error while publishing');
+      setTimeout(() => setCarouselPostError(''), 5000);
+    } finally {
+      setCarouselPosting(false);
+      setCarouselPostStep('');
     }
   };
 
@@ -712,35 +786,71 @@ export default function ShareStudioModal({
               </div>
             </div>
 
-            {/* Bottom Section: Pro Posting Tip & Direct Post */}
-            <div className="pt-3 border-t border-border-dark space-y-3">
-              <div className="p-2.5 rounded-lg bg-[#262930]/40 border border-border-dark text-[11px] text-text-muted leading-relaxed">
-                <span className="font-bold text-accent mr-1">💡 How to post:</span>
-                Download the Carousel PDF above, head over to LinkedIn, create a post, click the <span className="text-text-primary font-semibold">Document 📄</span> button, and paste your copied caption!
-              </div>
+            {/* Bottom Section: 1-Click Carousel Publishing & Single Slide Fallback */}
+            <div className="pt-3 border-t border-border-dark space-y-2.5">
+              {linkedinConnected ? (
+                <>
+                  {/* Primary 1-Click Entire Carousel Action */}
+                  <motion.button
+                    onClick={handlePublishEntireCarousel}
+                    disabled={carouselPosting || directPosting}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#0077B5] to-[#005582] hover:from-[#0088cc] hover:to-[#006699] text-white text-xs font-bold flex items-center justify-center gap-2.5 shadow-lg shadow-[#0077B5]/25 cursor-pointer transition-all duration-200 border border-[#0099e6]/40"
+                  >
+                    {carouselPosting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full" />
+                        <span>{carouselPostStep || 'Publishing Entire Carousel...'}</span>
+                      </>
+                    ) : carouselPostSuccess ? (
+                      <>
+                        <span className="text-base">🎉</span>
+                        <span className="text-green-300 font-bold">✓ Entire Carousel Live on LinkedIn!</span>
+                      </>
+                    ) : carouselPostError ? (
+                      <>
+                        <span>⚠️</span>
+                        <span className="text-red-200 font-medium">{carouselPostError}</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                        </svg>
+                        <span>1-Click Publish Entire Carousel (5 Slides)</span>
+                      </>
+                    )}
+                  </motion.button>
 
-              {/* Direct Post Button (Single Panel fallback) */}
-              <div className="flex items-center justify-between">
-                {linkedinConnected ? (
+                  {/* Secondary Single Slide Post Option */}
                   <button
                     onClick={handleDirectPostActivePanel}
-                    disabled={directPosting}
-                    className="w-full py-2.5 px-4 rounded-xl border border-border-dark bg-[#0077B5]/20 hover:bg-[#0077B5]/30 text-xs font-medium text-text-primary flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                    disabled={carouselPosting || directPosting}
+                    className="w-full text-center py-1.5 text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <svg className="w-3.5 h-3.5 text-[#0077B5]" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-                    </svg>
-                    {directPosting ? 'Publishing...' : directPostSuccess ? '✓ Published to LinkedIn!' : directPostError ? `⚠️ ${directPostError}` : `Direct Post Slide ${currentSlide + 1} to LinkedIn`}
+                    {directPosting ? (
+                      <span className="text-accent">Posting single slide...</span>
+                    ) : directPostSuccess ? (
+                      <span className="text-green-400 font-medium">✓ Slide {currentSlide + 1} posted!</span>
+                    ) : directPostError ? (
+                      <span className="text-red-400 font-medium">⚠️ {directPostError}</span>
+                    ) : (
+                      <span>Or post only slide {currentSlide + 1} as a single image</span>
+                    )}
                   </button>
-                ) : (
-                  <button
-                    onClick={onConnectLinkedin}
-                    className="w-full py-2 px-3 rounded-lg border border-border-dark text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer text-center"
-                  >
-                    Connect LinkedIn account for 1-click publishing
-                  </button>
-                )}
-              </div>
+                </>
+              ) : (
+                <button
+                  onClick={onConnectLinkedin}
+                  className="w-full py-3 px-4 rounded-xl border border-[#0077B5]/40 bg-[#0077B5]/20 hover:bg-[#0077B5]/30 text-xs font-semibold text-text-primary flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                >
+                  <svg className="w-4 h-4 text-[#0077B5]" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                  </svg>
+                  <span>Connect LinkedIn to Enable 1-Click Publishing</span>
+                </button>
+              )}
             </div>
 
           </div>

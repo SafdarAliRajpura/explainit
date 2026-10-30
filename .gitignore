@@ -3,6 +3,7 @@ backend/venv/
 backend/.env
 backend/data/images/
 backend/data/faiss_index/
+backend/data/linkedin_session.json
 backend/__pycache__/
 
 # Frontend

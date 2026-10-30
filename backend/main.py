@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from ingest import extract_text_from_file, build_vector_store
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -1071,6 +1071,101 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
 
     print(f"[LinkedIn Post] Panel {panel_number} posted to LinkedIn successfully!", flush=True)
     return {"success": True, "message": "Posted to LinkedIn successfully."}
+
+
+
+@app.post("/linkedin/post-carousel")
+async def post_carousel_to_linkedin(
+    file: UploadFile = File(...),
+    commentary: str = Form(""),
+    title: str = Form("ExplainIT Visual Carousel")
+):
+    print(f"[LinkedIn Carousel] Initiating carousel post: '{title}'...", flush=True)
+    if not linkedin_session.get("access_token") or not linkedin_session.get("person_urn"):
+        print("[LinkedIn Carousel] Error: Not connected to LinkedIn.", flush=True)
+        return {"success": False, "message": "Not connected to LinkedIn yet. Please connect your LinkedIn account first."}
+
+    access_token = linkedin_session["access_token"]
+    person_urn = linkedin_session["person_urn"]
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes or len(pdf_bytes) < 100:
+        return {"success": False, "message": "Invalid or empty PDF document provided."}
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "Linkedin-Version": "202610",
+        "X-Restli-Protocol-Version": "2.0.0",
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Step 1: Initialize Document Upload
+        init_response = await client.post(
+            "https://api.linkedin.com/rest/documents?action=initializeUpload",
+            headers=headers,
+            json={
+                "initializeUploadRequest": {
+                    "owner": person_urn
+                }
+            },
+        )
+        if init_response.status_code not in (200, 201):
+            print(f"[LinkedIn Carousel] Init upload failed: {init_response.status_code} {init_response.text}", flush=True)
+            return {"success": False, "message": "LinkedIn failed to initialize document upload.", "details": init_response.text}
+
+        init_data = init_response.json()
+        upload_val = init_data.get("value", {})
+        upload_url = upload_val.get("uploadUrl")
+        doc_urn = upload_val.get("document")
+
+        if not upload_url or not doc_urn:
+            return {"success": False, "message": "Malformed upload response from LinkedIn.", "details": init_data}
+
+        # Step 2: Upload Binary PDF
+        upload_headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/pdf",
+        }
+        upload_response = await client.put(upload_url, headers=upload_headers, content=pdf_bytes)
+        if upload_response.status_code not in (200, 201):
+            print(f"[LinkedIn Carousel] Binary PDF upload failed: {upload_response.status_code} {upload_response.text}", flush=True)
+            return {"success": False, "message": "Failed to upload document binary to LinkedIn.", "status": upload_response.status_code}
+
+        # Step 3: Create Document Post
+        clean_commentary = commentary.strip() if commentary else title
+        post_payload = {
+            "author": person_urn,
+            "commentary": clean_commentary,
+            "visibility": "PUBLIC",
+            "distribution": {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": []
+            },
+            "content": {
+                "media": {
+                    "id": doc_urn,
+                    "title": title[:200]
+                }
+            },
+            "lifecycleState": "PUBLISHED"
+        }
+
+        post_response = await client.post(
+            "https://api.linkedin.com/rest/posts",
+            headers=headers,
+            json=post_payload,
+        )
+
+        if post_response.status_code not in (200, 201):
+            print(f"[LinkedIn Carousel] Create post failed: {post_response.status_code} {post_response.text}", flush=True)
+            return {"success": False, "message": "Failed to publish carousel post to LinkedIn feed.", "status": post_response.status_code, "details": post_response.text}
+
+        post_urn = post_response.headers.get("x-restli-id", "")
+        print(f"[LinkedIn Carousel] Successfully published carousel! Post URN: {post_urn}", flush=True)
+        return {"success": True, "message": "Entire carousel published to LinkedIn successfully!", "post_urn": post_urn}
+
 
 
 class LinkedInCopyRequest(BaseModel):
