@@ -257,24 +257,6 @@ export default function ComicReader({ panels, topic, onReset }) {
             <span>Carousel Studio</span>
           </button>
 
-          {/* Interactive Concept Simulator Action */}
-          <button
-            onClick={() => {
-              if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-              }
-              setIsSpeaking(false);
-              setShowSimulator(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#10B981]/40 bg-[#10B981]/10 hover:bg-[#10B981]/20 text-[#10B981] hover:border-[#10B981] text-xs font-semibold transition-all shadow-sm cursor-pointer"
-            title="Open Interactive Concept Simulator"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-            <span>Simulator 🧪</span>
-          </button>
-
           <div className="h-4 w-[1px] bg-border-dark hidden sm:block" />
 
           {/* LinkedIn Connection Indicator */}
@@ -460,21 +442,21 @@ export default function ComicReader({ panels, topic, onReset }) {
               </div>
             </div>
 
-            <div className="pt-8 border-t border-border-dark flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="pt-8 border-t border-border-dark grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
               {/* PRIMARY — Test Yourself */}
               <motion.button
                 onClick={handleOpenQuiz}
-                whileHover={{ scale: 1.02, filter: 'brightness(1.1)' }}
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 bg-accent text-charcoal font-medium text-sm px-8 py-3.5 rounded-xl cursor-pointer transition-colors"
+                className="h-12 flex items-center justify-center gap-2 bg-accent text-charcoal font-semibold text-xs sm:text-sm px-3 rounded-xl cursor-pointer transition-colors shadow-sm whitespace-nowrap"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Test Yourself
+                <span>Test Yourself</span>
               </motion.button>
 
-              {/* SECONDARY — Try Simulator */}
+              {/* SECONDARY — Simulator Sandbox */}
               <motion.button
                 onClick={() => {
                   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -485,12 +467,12 @@ export default function ComicReader({ panels, topic, onReset }) {
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 border border-[#10B981]/40 bg-[#10B981]/10 hover:bg-[#10B981]/20 text-[#10B981] font-semibold text-sm px-6 py-3.5 rounded-xl cursor-pointer transition-colors shadow-sm"
+                className="h-12 flex items-center justify-center gap-2 border border-[#10B981]/40 bg-[#10B981]/10 hover:bg-[#10B981]/20 text-[#10B981] font-semibold text-xs sm:text-sm px-3 rounded-xl cursor-pointer transition-colors shadow-sm whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
-                Try Simulator 🧪
+                <span>Simulator Sandbox</span>
               </motion.button>
 
               {/* GHOST — Explain another topic */}
@@ -504,13 +486,13 @@ export default function ComicReader({ panels, topic, onReset }) {
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative flex items-center justify-center gap-2.5 px-8 py-3.5 border border-border-dark bg-surface text-text-muted rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 hover:shadow-[0_0_15px_rgba(232,163,61,0.15)] transition-all duration-300"
+                className="h-12 group relative flex items-center justify-center gap-2 px-3 border border-border-dark bg-surface text-text-muted hover:text-text-primary rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 transition-all whitespace-nowrap text-xs sm:text-sm font-medium"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-accent group-hover:rotate-12 transition-transform duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-accent shrink-0 group-hover:rotate-12 transition-transform duration-300">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                 </svg>
-                <span className="text-sm font-medium tracking-wide relative z-10 group-hover:text-text-primary transition-colors duration-300">Explain another topic</span>
+                <span>Another Topic</span>
               </motion.button>
             </div>
           </div>
