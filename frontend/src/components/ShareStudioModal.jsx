@@ -823,22 +823,24 @@ export default function ShareStudioModal({
                     )}
                   </motion.button>
 
-                  {/* Secondary Single Slide Post Option */}
-                  <button
-                    onClick={handleDirectPostActivePanel}
-                    disabled={carouselPosting || directPosting}
-                    className="w-full text-center py-1.5 text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    {directPosting ? (
-                      <span className="text-accent">Posting single slide...</span>
-                    ) : directPostSuccess ? (
-                      <span className="text-green-400 font-medium">✓ Slide {currentSlide + 1} posted!</span>
-                    ) : directPostError ? (
-                      <span className="text-red-400 font-medium">⚠️ {directPostError}</span>
-                    ) : (
-                      <span>Or post only slide {currentSlide + 1} as a single image</span>
-                    )}
-                  </button>
+                  {/* Secondary Single Slide Post Option (Only shown for the 3 actual topic panels, hidden on front cover & back summary) */}
+                  {currentSlide >= 1 && currentSlide <= (panels?.length || 3) && (
+                    <button
+                      onClick={handleDirectPostActivePanel}
+                      disabled={carouselPosting || directPosting}
+                      className="w-full text-center py-1.5 text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {directPosting ? (
+                        <span className="text-accent">Posting Panel {currentSlide}...</span>
+                      ) : directPostSuccess ? (
+                        <span className="text-green-400 font-medium">✓ Panel {currentSlide} posted!</span>
+                      ) : directPostError ? (
+                        <span className="text-red-400 font-medium">⚠️ {directPostError}</span>
+                      ) : (
+                        <span>Or post only Panel {currentSlide} as a single image</span>
+                      )}
+                    </button>
+                  )}
                 </>
               ) : (
                 <button
