@@ -19,6 +19,7 @@ from ingest import extract_text_from_file, build_vector_store
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -708,11 +709,95 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 """
             }
 
-def build_fallback_svg(topic: str, panel_num: int, caption: str) -> str:
+STYLE_CONFIGS = {
+    "comic": {
+        "name": "Classic Comic",
+        "diffusion_suffix": ", classic comic book art, bold dynamic ink lineart, vibrant flat halftone colors, retro graphic novel aesthetic, pop-art crosshatching, dramatic panel lighting, no text, no watermark, no logos",
+        "svg_bg": "#181412",
+        "primary": "#FFB800",
+        "secondary": "#EF4444",
+        "tertiary": "#10B981",
+        "accent": "#F59E0B",
+        "text": "#F5F5F0",
+        "visual_guidance": "Vibrant comic-book graphic novel aesthetic with punchy dynamic badge borders, clean flat fills, and expressive iconic outlines."
+    },
+    "blueprint": {
+        "name": "Technical Blueprint",
+        "diffusion_suffix": ", technical engineering blueprint style, deep cyan and navy monochrome schematic, clean grid lines, isometric architectural draft aesthetic, subtle chalkboard texture, precision instrumentation, no text, no watermark, no logos",
+        "svg_bg": "#0B192C",
+        "primary": "#00D2DF",
+        "secondary": "#5483B3",
+        "tertiary": "#A5D7E8",
+        "accent": "#00F0FF",
+        "text": "#F0F8FF",
+        "visual_guidance": "Technical schematic blueprint aesthetic with crisp coordinate grids, isometric block diagrams, cyan vector lines, and precision engineering annotations."
+    },
+    "watercolor": {
+        "name": "Editorial Watercolor",
+        "diffusion_suffix": ", modern editorial watercolor illustration, soft pigment washes, delicate textured cotton paper, elegant organic brush strokes, muted contemporary palette, high-end science journal cover art, soft natural daylight, no text, no watermark, no logos",
+        "svg_bg": "#1C1917",
+        "primary": "#F4A261",
+        "secondary": "#E76F51",
+        "tertiary": "#2A9D8F",
+        "accent": "#E9C46A",
+        "text": "#FDFBF7",
+        "visual_guidance": "Artistic modern editorial watercolor aesthetic with soft warm gradients, organic rounded badge frames, and elegant minimalist diagrams."
+    },
+    "cyberpunk": {
+        "name": "Retro Cyberpunk",
+        "diffusion_suffix": ", retro cyberpunk style, dark synthwave noir, glowing neon cyan and hot magenta rim lighting, dark reflective rainy textures, 80s futuristic HUD terminal aesthetic, high contrast, cinematic atmosphere, no text, no watermark, no logos",
+        "svg_bg": "#0D0D15",
+        "primary": "#00F0FF",
+        "secondary": "#FF007F",
+        "tertiary": "#FFE600",
+        "accent": "#BD00FF",
+        "text": "#00FFCC",
+        "visual_guidance": "Cyberpunk terminal HUD aesthetic with dark space background, vivid neon wireframe boxes, glowing status pills, and high-tech circuitry cues."
+    }
+}
+
+AUDIENCE_CONFIGS = {
+    "eli5": {
+        "name": "ELI5 (Beginner)",
+        "tone_prompt": """AUDIENCE LEVEL: ELI5 (Explain Like I'm 5 / Complete Beginner).
+- Tone: Playful, warm, clear, vivid, and memorable.
+- Analogy Requirement: Use a strong everyday metaphor or analogy (e.g. kitchen recipes, detective & art forger, playgrounds, puzzle pieces, sports).
+- Vocabulary: Zero intimidating academic jargon. If you must use a technical term, define it instantly with a simple metaphor.
+- Captions must feel exciting, accessible, and delightful to a beginner or child.""",
+        "quiz_prompt": "Craft fun, friendly, and intuitive multiple-choice questions focusing on the central metaphors and concepts. Keep phrasing upbeat and easy to understand.",
+        "linkedin_prompt": "Write with a friendly, highly accessible 'ELI5 / simplified breakdown' voice that anyone from beginners to curious learners can instantly grasp and enjoy."
+    },
+    "college": {
+        "name": "College (Standard)",
+        "tone_prompt": """AUDIENCE LEVEL: College / General Tech Audience (Standard).
+- Tone: Engaging, structured, and informative.
+- Narrative: Clear step-by-step mechanism breakdown: starting input/problem -> core transformation/action -> validated final outcome.
+- Vocabulary: Standard foundational concepts, clear terminology, and practical real-world context.""",
+        "quiz_prompt": "Craft balanced questions testing conceptual comprehension and core mechanics.",
+        "linkedin_prompt": "Write with a sharp, professional educational voice tailored for curious professionals and students."
+    },
+    "pro": {
+        "name": "Senior Engineer (Pro)",
+        "tone_prompt": """AUDIENCE LEVEL: Senior Engineer / Technical Expert (Deep Dive).
+- Tone: Rigorous, analytical, direct, and architecture-focused.
+- Technical Rigor: Highlight specific algorithmic mechanisms, objective functions/mathematical formulations, system bottlenecks, latency vs. throughput tradeoffs, and edge case handling.
+- Vocabulary: Industry-grade terminology (e.g., loss divergence, backprop gradients, state space, memory complexity).""",
+        "quiz_prompt": "Craft advanced technical scenario questions testing architectural understanding, tradeoffs, and system constraints.",
+        "linkedin_prompt": "Write with an authoritative, engineering-grade perspective focusing on system architecture, operational tradeoffs, and deep technical insights."
+    }
+}
+
+def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "comic") -> str:
     """
     Constructs an editorial, guaranteed-valid SVG graphic directly in Python.
     Guarantees 0% broken images even in edge-case network or parsing failures.
     """
+    style_cfg = STYLE_CONFIGS.get(style, STYLE_CONFIGS["comic"])
+    bg_color = style_cfg["svg_bg"]
+    accent_col = style_cfg["primary"]
+    border_col = style_cfg["secondary"]
+    text_col = style_cfg["text"]
+
     clean_topic = topic.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     clean_caption = caption.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     wrapped_lines = textwrap.wrap(clean_caption, width=46)[:4]
@@ -721,24 +806,24 @@ def build_fallback_svg(topic: str, panel_num: int, caption: str) -> str:
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
   <defs>
     <linearGradient id="fallbackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#181B20"/>
+      <stop offset="0%" stop-color="{bg_color}"/>
       <stop offset="100%" stop-color="#121417"/>
     </linearGradient>
   </defs>
   <rect width="800" height="800" fill="url(#fallbackGrad)"/>
-  <rect x="24" y="24" width="752" height="752" rx="16" fill="none" stroke="#262930" stroke-width="2"/>
+  <rect x="24" y="24" width="752" height="752" rx="16" fill="none" stroke="{border_col}" stroke-width="2"/>
   
-  <rect x="60" y="55" width="130" height="28" rx="14" fill="#262930" stroke="#E8A33D" stroke-width="1.5"/>
-  <text x="125" y="74" fill="#E8A33D" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1.5">STEP {panel_num}</text>
+  <rect x="60" y="55" width="130" height="28" rx="14" fill="{bg_color}" stroke="{accent_col}" stroke-width="1.5"/>
+  <text x="125" y="74" fill="{accent_col}" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1.5">STEP {panel_num}</text>
   
-  <text x="60" y="130" fill="#F2F1ED" font-family="system-ui, sans-serif" font-size="26" font-weight="700">{clean_topic}</text>
+  <text x="60" y="130" fill="{text_col}" font-family="system-ui, sans-serif" font-size="26" font-weight="700">{clean_topic}</text>
   
-  <circle cx="400" cy="400" r="160" fill="none" stroke="#262930" stroke-width="4"/>
-  <circle cx="400" cy="400" r="120" fill="none" stroke="#E8A33D" stroke-width="3" stroke-dasharray="8,6"/>
-  <circle cx="400" cy="400" r="60" fill="#262930" stroke="#38BDF8" stroke-width="2"/>
-  <circle cx="400" cy="400" r="18" fill="#10B981"/>
+  <circle cx="400" cy="400" r="160" fill="none" stroke="{border_col}" stroke-width="4"/>
+  <circle cx="400" cy="400" r="120" fill="none" stroke="{accent_col}" stroke-width="3" stroke-dasharray="8,6"/>
+  <circle cx="400" cy="400" r="60" fill="#262930" stroke="{border_col}" stroke-width="2"/>
+  <circle cx="400" cy="400" r="18" fill="{accent_col}"/>
 
-  <text x="60" y="650" fill="#8B8D93" font-family="system-ui, sans-serif" font-size="15">
+  <text x="60" y="650" fill="{text_col}" font-family="system-ui, sans-serif" font-size="15">
     {caption_tspan}
   </text>
 </svg>"""
@@ -795,19 +880,24 @@ def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str
         print(f"[SVG Sanitizer] Building guaranteed emergency valid SVG for Panel {panel_num}...", flush=True)
         return build_fallback_svg(topic, panel_num, caption)
 
-def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str) -> bool:
+def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str, style: str = "comic") -> bool:
     """
     Generates a visual-first, beginner-friendly, practical SVG illustration with
     strict geometric layout archetypes to guarantee zero text overlap and perfect alignment.
     """
-    print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}'...", flush=True)
+    print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}' in style '{style}'...", flush=True)
     domain_info = detect_topic_domain(topic, caption)
     domain_name = domain_info["domain"]
-    bg_color = domain_info["bg_color"]
-    prim = domain_info["primary_accent"]
-    sec = domain_info["secondary_accent"]
-    tert = domain_info["tertiary_accent"]
-    guidance = domain_info["visual_guidance"]
+
+    style_cfg = STYLE_CONFIGS.get(style, STYLE_CONFIGS["comic"])
+    bg_color = style_cfg["svg_bg"]
+    prim = style_cfg["primary"]
+    sec = style_cfg["secondary"]
+    tert = style_cfg["tertiary"]
+    accent = style_cfg["accent"]
+    text_col = style_cfg["text"]
+    style_name = style_cfg["name"]
+    style_guidance = style_cfg["visual_guidance"]
 
     archetype_info = detect_layout_archetype(topic, caption, panel_num, prim, sec, tert)
     archetype_name = archetype_info["archetype_name"]
@@ -820,13 +910,15 @@ TOPIC: {topic}
 PANEL {panel_num} OF 3: {caption}
 DOMAIN: {domain_name}
 LAYOUT ARCHETYPE: {archetype_name}
+AESTHETIC STYLE: {style_name}
+STYLE DESIGN GUIDANCE: {style_guidance}
 
 MANDATORY DESIGN & ALIGNMENT RULES:
 1. TOPIC-ACCURATE CONCEPT MAPPING:
    - Your illustration MUST faithfully represent the specific details of:
      "{caption}"
    - If the caption mentions "three estates", "3 states", or 3 entities, you MUST draw all 3 distinct cards/tiers. Do NOT merge them!
-   - Draw recognizable real-world icons fitting the "{domain_name}" domain.
+   - Draw recognizable real-world icons fitting the "{domain_name}" domain, rendered according to the {style_name} aesthetic.
 2. ZERO TEXT OVERLAPS (SPATIAL SEPARATION):
    - Icon coordinates and Text coordinates must NEVER be the same.
    - Text must be placed in a dedicated slot (inside a label pill or with >= 25px clear vertical offset).
@@ -840,7 +932,7 @@ MANDATORY DESIGN & ALIGNMENT RULES:
 5. CANVAS SPECIFICATIONS:
    - Root: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
    - Background: <rect width="800" height="800" fill="{bg_color}"/>
-   - Palette: Primary: {prim}, Secondary: {sec}, Tertiary: {tert}, Text: #F2F1ED.
+   - Palette: Primary Accent: {prim}, Secondary Accent: {sec}, Tertiary Accent: {tert}, Text: {text_col}, Highlight: {accent}.
    - Header: Simple badge ("STEP {panel_num}") and clean short title (2-4 words max).
 
 {layout_guidance}
@@ -862,12 +954,12 @@ STRICT XML FORMAT:
         return True
     except Exception as e:
         print(f"[SVG] Failed to generate SVG for panel {panel_num}: {e}. Writing emergency fallback...", flush=True)
-        fallback_svg = build_fallback_svg(topic, panel_num, caption)
+        fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(fallback_svg)
         return True
 
-STYLE_SUFFIX = ", realistic editorial illustration, natural materials and believable proportions, carefully composed documentary-style scene, soft natural cinematic lighting, restrained vibrant colors, clear focal subject, fine realistic detail, no text, no watermark, no logos"
+STYLE_SUFFIX = STYLE_CONFIGS["comic"]["diffusion_suffix"]
 GROUNDING_THRESHOLD = 1.0
 
 LINKEDIN_CLIENT_ID = os.environ["LINKEDIN_CLIENT_ID"]
@@ -900,6 +992,8 @@ linkedin_session = load_linkedin_session()
 
 class TopicRequest(BaseModel):
     topic: str
+    audience: Optional[str] = "college"
+    style: Optional[str] = "comic" 
 
 
 @app.get("/")
@@ -1171,21 +1265,27 @@ async def post_carousel_to_linkedin(
 class LinkedInCopyRequest(BaseModel):
     topic: str
     panels: list = []
+    audience: Optional[str] = "college"
 
 @app.post("/generate-linkedin-copy")
 def generate_linkedin_copy(request: LinkedInCopyRequest):
     topic = request.topic
+    audience = (request.audience or "college").lower().strip()
+    audience_cfg = AUDIENCE_CONFIGS.get(audience, AUDIENCE_CONFIGS["college"])
     panel_texts = "\n".join([f"Step {p.get('panel_number', i+1)}: {p.get('caption', '')}" for i, p in enumerate(request.panels)])
     
     prompt = f"""You are a top-tier educational LinkedIn creator.
 Write a high-converting, viral LinkedIn post hook, key takeaways, and call-to-action for an illustrated carousel about:
 TOPIC: {topic}
 
+VOICE AND AUDIENCE: {audience_cfg['name']}
+{audience_cfg['linkedin_prompt']}
+
 PANEL STEPS:
 {panel_texts}
 
 REQUIREMENTS:
-1. Hook: Engaging 1-2 sentence opening hook with an emoji that stops the scroll.
+1. Hook: Engaging 1-2 sentence opening hook aligned with the {audience_cfg['name']} tone that stops the scroll.
 2. Bullets: 3 concise, punchy bullet points summarizing the 3 steps with an emoji each.
 3. CTA: Friendly call to action telling the reader to swipe through the carousel PDF and save the post.
 4. Hashtags: 4-5 relevant industry/topic hashtags (including #ExplainIT).
@@ -1367,6 +1467,15 @@ async def upload_source(file: UploadFile = File(...)):
 @app.post("/generate")
 def generate_comic(request: TopicRequest):
     topic = request.topic
+    audience = (request.audience or "college").lower().strip()
+    if audience not in AUDIENCE_CONFIGS:
+        audience = "college"
+    style = (request.style or "comic").lower().strip()
+    if style not in STYLE_CONFIGS:
+        style = "comic"
+
+    audience_cfg = AUDIENCE_CONFIGS[audience]
+    style_cfg = STYLE_CONFIGS[style]
 
     vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
     results_with_scores = vector_store.similarity_search_with_score(topic, k=4)
@@ -1380,7 +1489,12 @@ def generate_comic(request: TopicRequest):
     grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
 
     prompt = f"""You are an expert educational infographic and visual storyteller.
-Your mission is to generate a 3-panel visual explainer script for the topic: "{topic}".
+Your mission is to generate a 3-panel visual explainer script for the topic: \"{topic}\".
+
+AUDIENCE DEPTH GUIDANCE:
+{audience_cfg['tone_prompt']}
+
+AESTHETIC STYLE: {style_cfg['name']}
 
 CONTEXT:
 {grounded_context}
@@ -1390,11 +1504,12 @@ TOPIC TO EXPLAIN:
 
 PANEL SCRIPT REQUIREMENTS:
 1. Strict Grounding: Use ONLY facts directly supported by the context above.
-2. Narrative Progression:
+2. Audience Depth Adherence: The captions must strictly embody the {audience_cfg['name']} guidelines above.
+3. Narrative Progression:
    - Panel 1: The Core Concept & Input (What is the starting point or problem?)
    - Panel 2: The Core Mechanism & Action (How does it work step-by-step?)
    - Panel 3: The Result & Grounded Output (What is the final accurate outcome?)
-3. Caption: Clear, engaging, natural human explanation (1-2 sentences).
+4. Caption: Clear, engaging, natural human explanation fitting {audience_cfg['name']} (1-2 sentences).
 
 CRITICAL IMAGE PROMPT RULES:
 The image prompt is sent to a text-to-image diffusion model. Diffusion models cannot draw abstract buzzwords (like 'embeddings similarity', 'latent vectors', 'data points'). When given abstract phrases, they hallucinate generic neon hallways, random futuristic tunnels, or robots.
@@ -1446,7 +1561,7 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         panel_num = panel["panel_number"]
         caption = panel.get("caption", "")
         raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
-        image_prompt = raw_prompt.strip() + STYLE_SUFFIX
+        image_prompt = raw_prompt.strip() + style_cfg["diffusion_suffix"]
         random_seed = random.randint(1, 1000000)
         encoded_prompt = quote(image_prompt)
 
@@ -1486,7 +1601,7 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
             svg_path = f"data/images/panel_{panel_num}.svg"
             png_path = f"data/images/panel_{panel_num}.png"
-            if generate_topic_svg(topic, panel_num, caption, svg_path):
+            if generate_topic_svg(topic, panel_num, caption, svg_path, style=style):
                 panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
                 convert_svg_to_png(svg_path, png_path)
             else:
@@ -1514,15 +1629,20 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
     print(f"[Generate] All {len(script['panels'])} panels generated successfully!", flush=True)
     script["grounded"] = True
+    script["audience"] = audience
+    script["style"] = style
     return script
 
 
 class QuizRequest(BaseModel):
     topic: str
+    audience: Optional[str] = "college"
 
 @app.post("/generate-quiz")
 def generate_quiz(request: QuizRequest):
     topic = request.topic
+    audience = (request.audience or "college").lower().strip()
+    audience_cfg = AUDIENCE_CONFIGS.get(audience, AUDIENCE_CONFIGS["college"])
 
     vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
     results_with_scores = vector_store.similarity_search_with_score(topic, k=4)
@@ -1532,8 +1652,11 @@ def generate_quiz(request: QuizRequest):
 
     grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
 
-    prompt = f"""You are an expert educator. Create a 3-question multiple-choice quiz about "{topic}" based ONLY on this context:
+    prompt = f"""You are an expert educator. Create a 3-question multiple-choice quiz about \"{topic}\" based ONLY on this context:
 {grounded_context}
+
+AUDIENCE LEVEL: {audience_cfg['name']}
+{audience_cfg['quiz_prompt']}
 
 Return ONLY valid JSON in this exact format:
 {{
@@ -1569,4 +1692,5 @@ Return ONLY valid JSON in this exact format:
         except json.JSONDecodeError:
             raise HTTPException(status_code=500, detail="Failed to parse quiz JSON from LLM.")
 
+    quiz_data["audience"] = audience
     return quiz_data
