@@ -885,25 +885,27 @@ def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: st
     Generates a visual-first, beginner-friendly, practical SVG illustration with
     strict geometric layout archetypes to guarantee zero text overlap and perfect alignment.
     """
-    print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}' in style '{style}'...", flush=True)
-    domain_info = detect_topic_domain(topic, caption)
-    domain_name = domain_info["domain"]
+    try:
+        print(f"[SVG] Synthesizing Panel {panel_num} illustration for '{topic}' in style '{style}'...", flush=True)
+        domain_info = detect_topic_domain(topic, caption)
+        domain_name = domain_info["domain"]
+        guidance = domain_info.get("visual_guidance", "")
 
-    style_cfg = STYLE_CONFIGS.get(style, STYLE_CONFIGS["comic"])
-    bg_color = style_cfg["svg_bg"]
-    prim = style_cfg["primary"]
-    sec = style_cfg["secondary"]
-    tert = style_cfg["tertiary"]
-    accent = style_cfg["accent"]
-    text_col = style_cfg["text"]
-    style_name = style_cfg["name"]
-    style_guidance = style_cfg["visual_guidance"]
+        style_cfg = STYLE_CONFIGS.get(style, STYLE_CONFIGS["comic"])
+        bg_color = style_cfg["svg_bg"]
+        prim = style_cfg["primary"]
+        sec = style_cfg["secondary"]
+        tert = style_cfg["tertiary"]
+        accent = style_cfg["accent"]
+        text_col = style_cfg["text"]
+        style_name = style_cfg["name"]
+        style_guidance = style_cfg["visual_guidance"]
 
-    archetype_info = detect_layout_archetype(topic, caption, panel_num, prim, sec, tert)
-    archetype_name = archetype_info["archetype_name"]
-    layout_guidance = archetype_info["layout_instructions"]
+        archetype_info = detect_layout_archetype(topic, caption, panel_num, prim, sec, tert)
+        archetype_name = archetype_info["archetype_name"]
+        layout_guidance = archetype_info["layout_instructions"]
 
-    prompt = f"""You are a world-class visual explainer and infographic designer (like Kurzgesagt or Vox).
+        prompt = f"""You are a world-class visual explainer and infographic designer (like Kurzgesagt or Vox).
 Your goal is to explain this concept visually with PERFECT geometric alignment, zero text collisions, and complete concept accuracy.
 
 TOPIC: {topic}
@@ -943,7 +945,6 @@ STRICT XML FORMAT:
 - Return ONLY raw valid XML <svg>...</svg>. No markdown backticks, no code fences.
 - Every ampersand must be written as &amp;.
 """
-    try:
         response = invoke_llm_with_retry(prompt)
         raw = "".join([b["text"] for b in response.content if isinstance(b, dict) and b.get("type") == "text"]) if isinstance(response.content, list) else str(response.content)
         svg_content = sanitize_and_validate_svg(raw, topic, panel_num, caption)
@@ -1558,64 +1559,75 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
     os.makedirs("data/images", exist_ok=True)
     def process_panel(panel):
-        panel_num = panel["panel_number"]
-        caption = panel.get("caption", "")
-        raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
-        image_prompt = raw_prompt.strip() + style_cfg["diffusion_suffix"]
-        random_seed = random.randint(1, 1000000)
-        encoded_prompt = quote(image_prompt)
+        try:
+            panel_num = panel["panel_number"]
+            caption = panel.get("caption", "")
+            raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
+            image_prompt = raw_prompt.strip() + style_cfg["diffusion_suffix"]
+            random_seed = random.randint(1, 1000000)
+            encoded_prompt = quote(image_prompt)
 
-        pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
-        img_saved = False
+            pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
+            img_saved = False
 
-        if pollinations_key:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0",
-                "Authorization": f"Bearer {pollinations_key}"
-            }
-            image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
-            for attempt in range(2):
-                try:
-                    img_response = requests.get(image_gen_url, headers=headers, timeout=30)
-                    if img_response.status_code == 200 and len(img_response.content) > 1000:
-                        png_path = f"data/images/panel_{panel_num}.png"
-                        with open(png_path, "wb") as f:
-                            f.write(img_response.content)
-                        panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
-                        img_saved = True
-                        break
-                    time.sleep(1)
-                except Exception as e:
-                    print(f"Error generating diffusion image for panel {panel_num}: {e}", flush=True)
-                    time.sleep(1)
+            if pollinations_key:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0",
+                    "Authorization": f"Bearer {pollinations_key}"
+                }
+                image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
+                for attempt in range(2):
+                    try:
+                        img_response = requests.get(image_gen_url, headers=headers, timeout=30)
+                        if img_response.status_code == 200 and len(img_response.content) > 1000:
+                            png_path = f"data/images/panel_{panel_num}.png"
+                            with open(png_path, "wb") as f:
+                                f.write(img_response.content)
+                            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
+                            img_saved = True
+                            break
+                        time.sleep(1)
+                    except Exception as e:
+                        print(f"Error generating diffusion image for panel {panel_num}: {e}", flush=True)
+                        time.sleep(1)
 
-        cache_buster = int(time.time() * 1000)
-        if not img_saved:
-            # Clean up any stale png counterpart so only the fresh svg exists
-            stale_png = f"data/images/panel_{panel_num}.png"
-            if os.path.exists(stale_png):
-                try:
-                    os.remove(stale_png)
-                except Exception:
-                    pass
+            cache_buster = int(time.time() * 1000)
+            if not img_saved:
+                # Clean up any stale png counterpart so only the fresh svg exists
+                stale_png = f"data/images/panel_{panel_num}.png"
+                if os.path.exists(stale_png):
+                    try:
+                        os.remove(stale_png)
+                    except Exception:
+                        pass
 
-            svg_path = f"data/images/panel_{panel_num}.svg"
-            png_path = f"data/images/panel_{panel_num}.png"
-            if generate_topic_svg(topic, panel_num, caption, svg_path, style=style):
-                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
-                convert_svg_to_png(svg_path, png_path)
+                svg_path = f"data/images/panel_{panel_num}.svg"
+                png_path = f"data/images/panel_{panel_num}.png"
+                if generate_topic_svg(topic, panel_num, caption, svg_path, style=style):
+                    panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+                    convert_svg_to_png(svg_path, png_path)
+                else:
+                    create_fallback_card(topic, panel_num, caption, png_path)
+                    panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
             else:
-                create_fallback_card(topic, panel_num, caption, png_path)
+                # Clean up stale svg counterpart if diffusion succeeded
+                stale_svg = f"data/images/panel_{panel_num}.svg"
+                if os.path.exists(stale_svg):
+                    try:
+                        os.remove(stale_svg)
+                    except Exception:
+                        pass
                 panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
-        else:
-            # Clean up stale svg counterpart if diffusion succeeded
-            stale_svg = f"data/images/panel_{panel_num}.svg"
-            if os.path.exists(stale_svg):
-                try:
-                    os.remove(stale_svg)
-                except Exception:
-                    pass
-            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
+        except Exception as e:
+            print(f"[Generate] Emergency fallback in process_panel for panel {panel.get('panel_number')}: {e}", flush=True)
+            panel_num = panel.get("panel_number", 1)
+            caption = panel.get("caption", "")
+            cache_buster = int(time.time() * 1000)
+            svg_path = f"data/images/panel_{panel_num}.svg"
+            fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
+            with open(svg_path, "w", encoding="utf-8") as f:
+                f.write(fallback_svg)
+            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
         return panel
 
     print(f"[Generate] Generating visuals for {len(script['panels'])} panels in parallel...", flush=True)
