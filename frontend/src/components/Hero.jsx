@@ -23,6 +23,15 @@ const LOADING_MESSAGES = [
 
 
 
+const TRENDING_TOPICS = [
+  { label: 'Quantum Computing', icon: '⚛️' },
+  { label: 'How mRNA Vaccines Work', icon: '🧬' },
+  { label: 'Transformer Attention', icon: '🧠' },
+  { label: 'Black Hole Event Horizons', icon: '🕳️' },
+  { label: 'CRISPR Gene Editing', icon: '🌿' },
+  { label: 'Nuclear Fusion Energy', icon: '⚡' },
+];
+
 export default function Hero() {
 
   const [topic, setTopic] = useState('');
@@ -30,6 +39,7 @@ export default function Hero() {
   const [status, setStatus] = useState('idle'); // 'idle', 'loading', 'success', 'refused', 'error'
 
   const [panels, setPanels] = useState([]);
+  const [sourceCitation, setSourceCitation] = useState(null);
 
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -101,76 +111,49 @@ export default function Hero() {
 
 
 
-  const handleGenerate = async () => {
-
-    if (!topic.trim()) return;
-
-
+  const handleGenerate = async (overrideTopic) => {
+    const topicToUse = (typeof overrideTopic === 'string' ? overrideTopic : topic).trim();
+    if (!topicToUse) return;
 
     setStatus('loading');
-
     setErrorMessage('');
-
     setPanels([]);
-
-
+    setSourceCitation(null);
 
     try {
-
       const response = await fetch('http://localhost:8000/generate', {
-
         method: 'POST',
-
         headers: { 'Content-Type': 'application/json' },
-
         body: JSON.stringify({ 
-
-          topic: topic.trim(),
-
+          topic: topicToUse,
           audience,
-
           style
-
         })
-
       });
 
-
-
       if (!response.ok) {
-
         throw new Error("Server returned an error.");
-
       }
-
-
 
       const data = await response.json();
 
-
-
       if (data.grounded) {
-
         setPanels(data.panels || []);
-
+        setSourceCitation(data.source_citation || null);
         setStatus('success');
-
       } else {
-
         setErrorMessage(data.message || "Could not ground the topic in real sources.");
-
         setStatus('refused');
-
       }
-
     } catch (err) {
-
       setErrorMessage("Couldn't reach the server. Is the backend running?");
-
       setStatus('error');
-
     }
+  };
 
+  const handleSelectTrending = (trendingTopic) => {
+    setTopic(trendingTopic);
+    handleGenerate(trendingTopic);
   };
 
 
@@ -363,7 +346,7 @@ export default function Hero() {
 
           <motion.button
 
-            onClick={handleGenerate}
+            onClick={() => handleGenerate()}
 
             whileHover={{ scale: 1.02, filter: "brightness(1.1)" }}
 
@@ -377,6 +360,29 @@ export default function Hero() {
 
           </motion.button>
 
+        </div>
+
+        {/* Trending Topic Pills */}
+        <div className="flex flex-col items-center gap-2 -mt-4">
+          <div className="flex items-center gap-1.5 text-xs text-text-muted">
+            <span className="text-accent text-xs">✨</span>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-text-muted/80">
+              Trending Topics:
+            </span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 max-w-xl">
+            {TRENDING_TOPICS.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => handleSelectTrending(item.label)}
+                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface/80 hover:bg-[#1C2028] border border-border-dark hover:border-accent/60 text-xs text-text-muted hover:text-text-primary transition-all cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(232,163,61,0.15)] active:scale-95"
+              >
+                <span>{item.icon}</span>
+                <span className="font-medium group-hover:text-accent transition-colors">{item.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
 
@@ -855,6 +861,8 @@ export default function Hero() {
 
         style={style}
 
+        sourceCitation={sourceCitation}
+
         onReset={() => {
 
           setStatus('idle');
@@ -862,6 +870,8 @@ export default function Hero() {
           setTopic('');
 
           setPanels([]);
+
+          setSourceCitation(null);
 
         }} 
 

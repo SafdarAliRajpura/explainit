@@ -18,7 +18,7 @@ const ChevronRight = () => (
   </svg>
 );
 
-export default function ComicReader({ panels, topic, audience = 'college', style = 'comic', onReset }) {
+export default function ComicReader({ panels, topic, audience = 'college', style = 'comic', sourceCitation, onReset }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -212,18 +212,35 @@ export default function ComicReader({ panels, topic, audience = 'college', style
       <div className="w-full flex justify-between items-center mb-8 flex-wrap gap-4">
         {/* Left Badges: Verified Source + Persona & Style Pill */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Verified Source Indicator */}
-          <div className="inline-flex items-center gap-3 px-1.5 py-1.5 rounded-full border border-border-dark bg-surface shadow-sm">
-            <div className="flex items-center gap-2.5 bg-charcoal px-4 py-1.5 rounded-full border border-border-dark/50 shadow-inner">
+          {/* Verified Source Indicator with Clickable Source Citation */}
+          <div className="inline-flex items-center gap-2.5 px-1.5 py-1.5 rounded-full border border-border-dark bg-surface shadow-sm max-w-full">
+            <div className="flex items-center gap-2 bg-charcoal px-3 py-1.5 rounded-full border border-border-dark/50 shadow-inner shrink-0">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-50"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-accent shadow-[0_0_8px_rgba(232,163,61,0.8)]"></span>
               </span>
               <span className="text-[10px] tracking-[0.2em] uppercase text-text-primary font-semibold">Verified Source</span>
             </div>
-            <span className="text-sm text-text-muted font-light pr-4">
-              Topic: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
-            </span>
+            {sourceCitation?.url ? (
+              <a
+                href={sourceCitation.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-accent font-medium pr-3.5 transition-colors group cursor-pointer"
+                title={`Click to inspect original source citation: ${sourceCitation.title || sourceCitation.url}`}
+              >
+                <span className="truncate max-w-[170px] sm:max-w-[260px] md:max-w-[340px]">
+                  {sourceCitation.citation_label || sourceCitation.title || topic}
+                </span>
+                <svg className="w-3.5 h-3.5 text-accent/70 group-hover:text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : (
+              <span className="text-sm text-text-muted font-light pr-4">
+                Topic: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
+              </span>
+            )}
           </div>
 
           {/* Persona & Aesthetic Metadata Pill (Hidden via SHOW_PERSONA_STYLE_FEATURE toggle) */}
@@ -593,6 +610,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
         totalPanels={panels.length}
         audience={audience}
         style={style}
+        sourceCitation={sourceCitation}
       />
     </div>
   );

@@ -116,6 +116,7 @@ export default function PanelTutorDrawer({
   totalPanels = 3,
   audience = 'college',
   style = 'comic',
+  sourceCitation,
 }) {
   const panelNum = currentPanel?.panel_number || 1;
   const panelCaption = currentPanel?.caption || '';
@@ -355,8 +356,21 @@ export default function PanelTutorDrawer({
                   </div>
                 )}
                 <div className="overflow-hidden">
-                  <div className="text-[11px] font-semibold text-accent uppercase tracking-wider">
-                    Grounded on Step {panelNum}:
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-accent uppercase tracking-wider">
+                      Grounded on Step {panelNum}:
+                    </span>
+                    {sourceCitation?.url && (
+                      <a
+                        href={sourceCitation.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-text-muted hover:text-accent underline flex items-center gap-1 transition-colors"
+                        title={sourceCitation.title || 'Source Citation'}
+                      >
+                        <span>[Source ↗]</span>
+                      </a>
+                    )}
                   </div>
                   <div className="text-text-primary/90 font-fraunces text-xs truncate max-w-[320px] sm:max-w-[380px]">
                     "{panelCaption}"
