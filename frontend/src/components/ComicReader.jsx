@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Quiz from './Quiz';
 import AudioNarrationPlayer from './AudioNarrationPlayer';
 import ShareStudioModal from './ShareStudioModal';
-import SimulatorSandbox from './SimulatorSandbox';
 import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
 
 const ChevronLeft = () => (
@@ -25,7 +24,6 @@ export default function ComicReader({ panels, topic, audience = 'college', style
   const [isZoomed, setIsZoomed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showShareStudio, setShowShareStudio] = useState(false);
-  const [showSimulator, setShowSimulator] = useState(false);
 
   const handleOpenQuiz = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -200,19 +198,6 @@ export default function ComicReader({ panels, topic, audience = 'college', style
           audience={audience}
           onBackToComic={() => setShowQuiz(false)}
           onReset={onReset}
-        />
-      </div>
-    );
-  }
-
-  // ── Simulator Sandbox view ──────────────────────────────────────────────────
-  if (showSimulator) {
-    return (
-      <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
-        <SimulatorSandbox
-          topic={topic}
-          panels={panels}
-          onClose={() => setShowSimulator(false)}
         />
       </div>
     );
@@ -460,37 +445,18 @@ export default function ComicReader({ panels, topic, audience = 'college', style
               </div>
             </div>
 
-            <div className="pt-8 border-t border-border-dark grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+            <div className="pt-8 border-t border-border-dark grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
               {/* PRIMARY — Test Yourself */}
               <motion.button
                 onClick={handleOpenQuiz}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="h-12 flex items-center justify-center gap-2 bg-accent text-charcoal font-semibold text-xs sm:text-sm px-3 rounded-xl cursor-pointer transition-colors shadow-sm whitespace-nowrap"
+                className="h-12 flex items-center justify-center gap-2 bg-accent text-charcoal font-semibold text-xs sm:text-sm px-4 rounded-xl cursor-pointer transition-colors shadow-sm whitespace-nowrap"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>Test Yourself</span>
-              </motion.button>
-
-              {/* SECONDARY — Simulator Sandbox */}
-              <motion.button
-                onClick={() => {
-                  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                  }
-                  setIsSpeaking(false);
-                  setShowSimulator(true);
-                }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="h-12 flex items-center justify-center gap-2 border border-[#10B981]/40 bg-[#10B981]/10 hover:bg-[#10B981]/20 text-[#10B981] font-semibold text-xs sm:text-sm px-3 rounded-xl cursor-pointer transition-colors shadow-sm whitespace-nowrap"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                </svg>
-                <span>Simulator Sandbox</span>
               </motion.button>
 
               {/* GHOST — Explain another topic */}
@@ -504,7 +470,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="h-12 group relative flex items-center justify-center gap-2 px-3 border border-border-dark bg-surface text-text-muted hover:text-text-primary rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 transition-all whitespace-nowrap text-xs sm:text-sm font-medium"
+                className="h-12 group relative flex items-center justify-center gap-2 px-4 border border-border-dark bg-surface text-text-muted hover:text-text-primary rounded-xl overflow-hidden cursor-pointer shadow-sm hover:border-accent/40 transition-all whitespace-nowrap text-xs sm:text-sm font-medium"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-accent shrink-0 group-hover:rotate-12 transition-transform duration-300">
