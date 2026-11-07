@@ -332,7 +332,7 @@ def detect_topic_domain(topic: str, caption: str) -> dict:
 """
     }
 
-def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str, sec: str, tert: str) -> dict:
+def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str, sec: str, tert: str, card_bg: str = "#161B26", sub_bg: str = "#0F1117", text_col: str = "#F2F1ED") -> dict:
     """
     Selects a distinct, creative, domain-authentic geometric layout archetype for each panel.
     Guarantees that every panel in the 3-panel sequence has a UNIQUE creative visual structure:
@@ -357,33 +357,33 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: STACKED_3_TIERS (3 Distinct Cards Stacked Vertically)
   The concept describes 3 distinct classes, tiers, states, or layers. You MUST draw all 3 distinct cards:
   * Top Card (Tier 1 - 1st Estate / Clergy / Top Layer):
-    - Container: <rect x="180" y="150" width="440" height="90" rx="12" fill="#181D2A" stroke="{prim}" stroke-width="2"/>
+    - Container: <rect x="180" y="150" width="440" height="90" rx="12" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
     - Left Icon: A church/cross/clergy icon centered at (cx: 230, cy: 195)
     - Right Text Block:
-      * Card Title: <text x="280" y="185" fill="#F2F1ED" font-size="18" font-weight="700">1st Estate: Clergy</text>
+      * Card Title: <text x="280" y="185" fill="{text_col}" font-size="18" font-weight="700">1st Estate: Clergy</text>
       * Pill Badge: <rect x="280" y="200" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
                     <text x="370" y="217" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Privileged</text>
   * Middle Card (Tier 2 - 2nd Estate / Nobility / Middle Layer):
-    - Container: <rect x="140" y="265" width="520" height="90" rx="12" fill="#181D2A" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="140" y="265" width="520" height="90" rx="12" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Left Icon: A crown/sword/castle icon centered at (cx: 190, cy: 310)
     - Right Text Block:
-      * Card Title: <text x="240" y="300" fill="#F2F1ED" font-size="18" font-weight="700">2nd Estate: Nobility</text>
+      * Card Title: <text x="240" y="300" fill="{text_col}" font-size="18" font-weight="700">2nd Estate: Nobility</text>
       * Pill Badge: <rect x="240" y="315" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
                     <text x="330" y="332" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Feudal Rights</text>
   * Crushing Burden Arrow (Middle to Bottom):
     - A bold dashed red downward arrow: <path d="M 400 365 L 400 425" stroke="#EF4444" stroke-width="8" stroke-dasharray="8 6"/> with arrowhead at (400, 435).
-    - Centered Arrow Pill: <rect x="325" y="385" width="150" height="28" rx="6" fill="#0F1117" stroke="#EF4444" stroke-width="2"/>
+    - Centered Arrow Pill: <rect x="325" y="385" width="150" height="28" rx="6" fill="{sub_bg}" stroke="#EF4444" stroke-width="2"/>
       <text x="400" y="404" fill="#EF4444" font-size="12" font-weight="700" text-anchor="middle">100% TAX BURDEN</text>
   * Bottom Card (Tier 3 - 3rd Estate / Commoners - 97% of population bearing the weight):
-    - Container: <rect x="80" y="445" width="640" height="150" rx="14" fill="#1E283E" stroke="{tert}" stroke-width="2.5"/>
+    - Container: <rect x="80" y="445" width="640" height="150" rx="14" fill="{card_bg}" stroke="{tert}" stroke-width="2.5"/>
     - Left Graphics: 4-5 worker/peasant person silhouettes in a row (cx: 140, 200, 260, 320, cy: 500)
     - Right Text Block:
-      * Card Title: <text x="410" y="495" fill="#F2F1ED" font-size="22" font-weight="800">3rd Estate: Commoners</text>
+      * Card Title: <text x="410" y="495" fill="{text_col}" font-size="22" font-weight="800">3rd Estate: Commoners</text>
       * Description Pill: <rect x="410" y="515" width="260" height="32" rx="8" fill="#EF4444" opacity="0.2"/>
         <text x="540" y="536" fill="#EF4444" font-size="13" font-weight="700" text-anchor="middle">97% of People • Pays All Taxes</text>
   * Bottom Summary Pill:
-    - <rect x="120" y="650" width="560" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="678" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Deep Inequality: The majority worked to fund the elite</text>
+    - <rect x="120" y="650" width="560" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="678" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Deep Inequality: The majority worked to fund the elite</text>
 """
         }
 
@@ -396,30 +396,30 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: CS_INPUT_QUERY_INTERFACE (User Query Interface & Input Flow)
   Focus EXCLUSIVELY on the user's question, prompt, or starting request. DO NOT draw the whole pipeline!
   * Top Card (User Query Dialogue Card):
-    - Container: <rect x="90" y="160" width="620" height="180" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Container: <rect x="90" y="160" width="620" height="180" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
     - Speech Bubble / Search Icon: Centered at (cx: 170, cy: 250) with clean dialogue bubble shape and question mark '?'.
-    - Query Label: <text x="240" y="215" fill="#F2F1ED" font-size="20" font-weight="800">User Prompt / Query</text>
-    - Mock Input Field: <rect x="240" y="235" width="430" height="48" rx="10" fill="#0F1117" stroke="#2D3748" stroke-width="1.5"/>
+    - Query Label: <text x="240" y="215" fill="{text_col}" font-size="20" font-weight="800">User Prompt / Query</text>
+    - Mock Input Field: <rect x="240" y="235" width="430" height="48" rx="10" fill="{sub_bg}" stroke="{sec}" stroke-width="1.5"/>
       <text x="260" y="265" fill="{prim}" font-size="14" font-family="monospace">"What are the verified facts about this topic?"</text>
     - Subtext Badge: <rect x="240" y="295" width="160" height="24" rx="12" fill="{prim}" opacity="0.2"/>
       <text x="320" y="311" fill="{prim}" font-size="11" font-weight="700" text-anchor="middle">Input Intent &amp; Search</text>
   * Central Connecting Pulse:
     - Downward signal arrow from (400, 345) to (400, 420) with dashed stroke="{prim}" stroke-width="4".
-    - Pulse indicator: <circle cx="400" cy="382" r="16" fill="#1F2937" stroke="{prim}" stroke-width="2"/>
+    - Pulse indicator: <circle cx="400" cy="382" r="16" fill="{sub_bg}" stroke="{prim}" stroke-width="2"/>
       <text x="400" y="387" fill="{prim}" font-size="14" font-weight="800" text-anchor="middle">↓</text>
   * Bottom Card (Knowledge Pool / Target Corpus):
-    - Container: <rect x="90" y="420" width="620" height="210" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="90" y="420" width="620" height="210" rx="16" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Left Graphic: Stacked index book / vector database cube grid at (cx: 200, cy: 520).
     - Right Text Block:
-      * Section Title: <text x="310" y="480" fill="#F2F1ED" font-size="20" font-weight="800">Unstructured Knowledge Base</text>
+      * Section Title: <text x="310" y="480" fill="{text_col}" font-size="20" font-weight="800">Unstructured Knowledge Base</text>
       * Status Pills:
         <rect x="310" y="505" width="220" height="30" rx="8" fill="{sec}" opacity="0.2"/>
         <text x="420" y="525" fill="{sec}" font-size="13" font-weight="700" text-anchor="middle">Indexed Document Library</text>
         <rect x="310" y="545" width="220" height="30" rx="8" fill="#3B82F6" opacity="0.2"/>
         <text x="420" y="565" fill="#3B82F6" font-size="13" font-weight="700" text-anchor="middle">Awaiting Targeted Search</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 1: The user initiates a query that requires accurate retrieval</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 1: The user initiates a query that requires accurate retrieval</text>
 """
             }
         elif panel_num == 2:
@@ -429,37 +429,37 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: CS_VECTOR_RADAR_SCANNER (Vector Embedding & Search Scanner)
   Focus EXCLUSIVELY on the search, scanning, and chunk comparison mechanism!
   * Left Column (Query Vector Beacon):
-    - Container: <rect x="60" y="160" width="200" height="460" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="60" y="160" width="200" height="460" rx="16" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Header Badge: <rect x="85" y="185" width="150" height="28" rx="14" fill="{sec}" opacity="0.2"/>
       <text x="160" y="204" fill="{sec}" font-size="12" font-weight="700" text-anchor="middle">QUERY EMBEDDING</text>
     - Icon: Mathematical vector arrow / beacon emitting scanner rays centered at (cx: 160, cy: 330).
-    - Status Badge: <rect x="80" y="460" width="160" height="32" rx="8" fill="#0F1117" stroke="{sec}" stroke-width="1.5"/>
-      <text x="160" y="481" fill="#F2F1ED" font-size="13" font-weight="700" text-anchor="middle">Semantic Vector [v]</text>
+    - Status Badge: <rect x="80" y="460" width="160" height="32" rx="8" fill="{sub_bg}" stroke="{sec}" stroke-width="1.5"/>
+      <text x="160" y="481" fill="{text_col}" font-size="13" font-weight="700" text-anchor="middle">Semantic Vector [v]</text>
   * Center Column (Vector Radar Space / Scanner Matrix):
-    - Container: <rect x="280" y="160" width="240" height="460" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Container: <rect x="280" y="160" width="240" height="460" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
     - Header Badge: <rect x="310" y="185" width="180" height="28" rx="14" fill="{prim}" opacity="0.2"/>
       <text x="400" y="204" fill="{prim}" font-size="12" font-weight="700" text-anchor="middle">SIMILARITY SCANNER</text>
     - Circular Radar Matrix:
-      * Outer circle: <circle cx="400" cy="330" r="85" fill="#0F1117" stroke="{prim}" stroke-width="2" stroke-dasharray="6 4"/>
+      * Outer circle: <circle cx="400" cy="330" r="85" fill="{sub_bg}" stroke="{prim}" stroke-width="2" stroke-dasharray="6 4"/>
       * Scanner sweep beam: Semi-transparent sector sweep with glowing focal point at (cx: 420, cy: 310).
       * Vector points: Coordinate dots in space with distance connection lines.
-    - Status Badge: <rect x="305" y="460" width="190" height="32" rx="8" fill="#0F1117" stroke="{prim}" stroke-width="1.5"/>
-      <text x="400" y="481" fill="#F2F1ED" font-size="13" font-weight="700" text-anchor="middle">Cosine Distance Match</text>
+    - Status Badge: <rect x="305" y="460" width="190" height="32" rx="8" fill="{sub_bg}" stroke="{prim}" stroke-width="1.5"/>
+      <text x="400" y="481" fill="{text_col}" font-size="13" font-weight="700" text-anchor="middle">Cosine Distance Match</text>
   * Right Column (Top Matched Chunks):
-    - Container: <rect x="540" y="160" width="200" height="460" rx="16" fill="#161B26" stroke="{tert}" stroke-width="2"/>
+    - Container: <rect x="540" y="160" width="200" height="460" rx="16" fill="{card_bg}" stroke="{tert}" stroke-width="2"/>
     - Header Badge: <rect x="565" y="185" width="150" height="28" rx="14" fill="{tert}" opacity="0.2"/>
       <text x="640" y="204" fill="{tert}" font-size="12" font-weight="700" text-anchor="middle">RELEVANT CHUNKS</text>
-    - Top Match 1: <rect x="560" y="250" width="160" height="70" rx="10" fill="#0F1117" stroke="{tert}" stroke-width="1.5"/>
+    - Top Match 1: <rect x="560" y="250" width="160" height="70" rx="10" fill="{sub_bg}" stroke="{tert}" stroke-width="1.5"/>
       <text x="640" y="278" fill="{tert}" font-size="14" font-weight="800" text-anchor="middle">Chunk #1: 98% Match</text>
       <text x="640" y="300" fill="#8B8D93" font-size="11" text-anchor="middle">Exact Source Match</text>
-    - Top Match 2: <rect x="560" y="340" width="160" height="70" rx="10" fill="#0F1117" stroke="{tert}" stroke-width="1.5"/>
+    - Top Match 2: <rect x="560" y="340" width="160" height="70" rx="10" fill="{sub_bg}" stroke="{tert}" stroke-width="1.5"/>
       <text x="640" y="368" fill="{tert}" font-size="14" font-weight="800" text-anchor="middle">Chunk #2: 94% Match</text>
       <text x="640" y="390" fill="#8B8D93" font-size="11" text-anchor="middle">Contextual Match</text>
     - Status Badge: <rect x="560" y="460" width="160" height="32" rx="8" fill="{tert}" opacity="0.2"/>
       <text x="640" y="481" fill="{tert}" font-size="13" font-weight="700" text-anchor="middle">Ranked &amp; Extracted</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 2: Vector search identifies the most accurate chunks from the database</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 2: Vector search identifies the most accurate chunks from the database</text>
 """
             }
         else: # panel_num == 3
@@ -469,34 +469,34 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: CS_GROUNDED_VERIFIED_DOCUMENT (Verified Output Certificate with Citations)
   Focus EXCLUSIVELY on the grounded verified output and citation proof!
   * Top Card (Synthesis Engine - Context Injected):
-    - Container: <rect x="90" y="160" width="620" height="120" rx="14" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="90" y="160" width="620" height="120" rx="14" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Left Graphic: Retrieved Context Chunks + LLM Reasoning Core (cx: 170, cy: 220) with glowing spark/node icon.
     - Right Text:
-      * <text x="250" y="205" fill="#F2F1ED" font-size="18" font-weight="800">Augmented Prompt Synthesis</text>
+      * <text x="250" y="205" fill="{text_col}" font-size="18" font-weight="800">Augmented Prompt Synthesis</text>
       * <rect x="250" y="220" width="240" height="26" rx="6" fill="{sec}" opacity="0.2"/>
         <text x="370" y="238" fill="{sec}" font-size="12" font-weight="700" text-anchor="middle">Context Injected into LLM</text>
   * Connecting Verification Arrow:
     - Downward arrow from (400, 280) to (400, 325) with checkmark circle at (400, 303).
   * Main Hero Certificate (The Grounded Output Document):
-    - Container: <rect x="120" y="325" width="560" height="300" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2.5"/>
+    - Container: <rect x="120" y="325" width="560" height="300" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="2.5"/>
     - Document Header:
       * Green Verification Shield: <circle cx="170" cy="370" r="22" fill="#10B981" opacity="0.2"/>
         <path d="M 160 370 L 167 377 L 180 364" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
-      * Document Title: <text x="210" y="375" fill="#F2F1ED" font-size="20" font-weight="800">Grounded Factual Answer</text>
+      * Document Title: <text x="210" y="375" fill="{text_col}" font-size="20" font-weight="800">Grounded Factual Answer</text>
     - Mock Text Lines (Clear Verified Document):
-      * Line 1: <rect x="170" y="415" width="460" height="12" rx="6" fill="#2D3748"/>
-      * Line 2: <rect x="170" y="440" width="420" height="12" rx="6" fill="#2D3748"/>
-      * Line 3: <rect x="170" y="465" width="340" height="12" rx="6" fill="#2D3748"/>
+      * Line 1: <rect x="170" y="415" width="460" height="12" rx="6" fill="{sub_bg}"/>
+      * Line 2: <rect x="170" y="440" width="420" height="12" rx="6" fill="{sub_bg}"/>
+      * Line 3: <rect x="170" y="465" width="340" height="12" rx="6" fill="{sub_bg}"/>
     - Grounding Citation Badges:
       * Badge 1: <rect x="170" y="505" width="160" height="32" rx="8" fill="#10B981" opacity="0.2"/>
         <text x="250" y="526" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">✓ [1] Verified Citation</text>
-      * Badge 2: <rect x="350" y="505" width="160" height="32" rx="8" fill="#38BDF8" opacity="0.2"/>
-        <text x="430" y="526" fill="#38BDF8" font-size="12" font-weight="700" text-anchor="middle">✓ [2] Primary Source</text>
-    - Seal: <rect x="170" y="560" width="460" height="36" rx="8" fill="#0F1117" stroke="#10B981" stroke-width="1.5"/>
+      * Badge 2: <rect x="350" y="505" width="160" height="32" rx="8" fill="{tert}" opacity="0.2"/>
+        <text x="430" y="526" fill="{tert}" font-size="12" font-weight="700" text-anchor="middle">✓ [2] Primary Source</text>
+    - Seal: <rect x="170" y="560" width="460" height="36" rx="8" fill="{sub_bg}" stroke="#10B981" stroke-width="1.5"/>
       <text x="400" y="583" fill="#10B981" font-size="13" font-weight="800" text-anchor="middle">100% FACTUAL • ZERO HALLUCINATIONS</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#10B981" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 3: The model produces an authentic answer backed by retrieved evidence</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="#10B981" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 3: The model produces an authentic answer backed by retrieved evidence</text>
 """
             }
 
@@ -517,8 +517,8 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
     - <rect x="520" y="320" width="160" height="32" rx="16" fill="{tert}" opacity="0.2"/>
       <text x="600" y="341" fill="{tert}" font-size="13" font-weight="700" text-anchor="middle">Water &amp; CO2 In</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 1: Leaves absorb sunlight energy, carbon dioxide, and root moisture</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 1: Leaves absorb sunlight energy, carbon dioxide, and root moisture</text>
 """
             }
         elif panel_num == 2:
@@ -537,8 +537,8 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
     - <rect x="430" y="180" width="220" height="34" rx="17" fill="{sec}" opacity="0.2"/>
       <text x="540" y="202" fill="{sec}" font-size="13" font-weight="700" text-anchor="middle">Calvin Cycle (Sugar Wheel)</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 2: Microscopic cellular machinery transforms light into chemical food</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 2: Microscopic cellular machinery transforms light into chemical food</text>
 """
             }
         else: # panel_num == 3
@@ -548,18 +548,18 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: BIO_THRIVING_PAYOFF (Oxygen Release & Plant Food)
   Focus EXCLUSIVELY on the final products that sustain life!
   * Left Output Card (Fresh Oxygen Released):
-    - Container: <rect x="70" y="180" width="310" height="440" rx="16" fill="#161B26" stroke="{tert}" stroke-width="2"/>
+    - Container: <rect x="70" y="180" width="310" height="440" rx="16" fill="{card_bg}" stroke="{tert}" stroke-width="2"/>
     - Floating oxygen bubbles drifting upward into clean blue sky.
     - Badge: <rect x="105" y="470" width="240" height="36" rx="8" fill="{tert}" opacity="0.2"/>
       <text x="225" y="493" fill="{tert}" font-size="14" font-weight="700" text-anchor="middle">Fresh Oxygen Released (O2)</text>
   * Right Output Card (Glucose / Plant Sugar Fuel):
-    - Container: <rect x="420" y="180" width="310" height="440" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="420" y="180" width="310" height="440" rx="16" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Radiant golden energy crystal / plant sugar star.
     - Badge: <rect x="455" y="470" width="240" height="36" rx="8" fill="{sec}" opacity="0.2"/>
       <text x="575" y="493" fill="{sec}" font-size="14" font-weight="700" text-anchor="middle">Plant Food &amp; Energy (Sugar)</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 3: Plants release clean oxygen into the atmosphere and nourish growth</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 3: Plants release clean oxygen into the atmosphere and nourish growth</text>
 """
             }
 
@@ -572,28 +572,28 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: 2_COLUMN_SPLIT (Balanced Side-by-Side Symmetrical Columns)
   Compare cause and effect side-by-side with equal balance:
   * Left Card (Cause / Debt / Input):
-    - Container: <rect x="70" y="160" width="310" height="460" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="70" y="160" width="310" height="460" rx="16" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Card Header Badge: <rect x="100" y="185" width="150" height="30" rx="15" fill="{sec}" opacity="0.2"/>
       <text x="175" y="205" fill="{sec}" font-size="12" font-weight="700" text-anchor="middle">WAR COSTS</text>
     - Central Icon: Centered inside Left Card at (cx: 225, cy: 330) with r: 70 (e.g. Empty Royal Treasury Vault with low fallen coins).
-    - Status Badge: <rect x="110" y="450" width="230" height="36" rx="8" fill="#0F1117" stroke="{sec}" stroke-width="1.5"/>
-      <text x="225" y="473" fill="#F2F1ED" font-size="14" font-weight="700" text-anchor="middle">Empty State Treasury</text>
+    - Status Badge: <rect x="110" y="450" width="230" height="36" rx="8" fill="{sub_bg}" stroke="{sec}" stroke-width="1.5"/>
+      <text x="225" y="473" fill="{text_col}" font-size="14" font-weight="700" text-anchor="middle">Empty State Treasury</text>
     - Metric Pill: <text x="225" y="525" fill="#EF4444" font-size="13" font-weight="600" text-anchor="middle">Bankruptcy Imminent</text>
   * Center Transition / Impact:
     - Flow Arrow: <path d="M 390 390 L 410 390 M 403 383 L 410 390 L 403 397" stroke="#F2F1ED" stroke-width="4" stroke-linecap="round"/>
-    - Impact Badge: <circle cx="400" cy="340" r="18" fill="#1F2937" stroke="{tert}"/>
+    - Impact Badge: <circle cx="400" cy="340" r="18" fill="{sub_bg}" stroke="{tert}"/>
       <text x="400" y="345" fill="{tert}" font-size="14" font-weight="800" text-anchor="middle">→</text>
   * Right Card (Burden / Unfair Taxes / Output):
-    - Container: <rect x="420" y="160" width="310" height="460" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Container: <rect x="420" y="160" width="310" height="460" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
     - Card Header Badge: <rect x="450" y="185" width="150" height="30" rx="15" fill="{prim}" opacity="0.2"/>
       <text x="525" y="205" fill="{prim}" font-size="12" font-weight="700" text-anchor="middle">UNFAIR TAXES</text>
     - Central Icon: Centered inside Right Card at (cx: 575, cy: 330) with r: 70 (e.g. Tilted Scale of Injustice).
-    - Status Badge: <rect x="460" y="450" width="230" height="36" rx="8" fill="#0F1117" stroke="{prim}" stroke-width="1.5"/>
-      <text x="575" y="473" fill="#F2F1ED" font-size="14" font-weight="700" text-anchor="middle">Crushing Tax System</text>
+    - Status Badge: <rect x="460" y="450" width="230" height="36" rx="8" fill="{sub_bg}" stroke="{prim}" stroke-width="1.5"/>
+      <text x="575" y="473" fill="{text_col}" font-size="14" font-weight="700" text-anchor="middle">Crushing Tax System</text>
     - Metric Pill: <text x="575" y="525" fill="{tert}" font-size="13" font-weight="600" text-anchor="middle">Commoners Carry 100%</text>
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Heavy war expenses triggered extreme, unequal taxation</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Heavy war expenses triggered extreme, unequal taxation</text>
 """
             }
         elif panel_num == 2:
@@ -603,33 +603,33 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: STACKED_3_TIERS (3 Distinct Cards Stacked Vertically)
   The concept describes 3 distinct classes, tiers, states, or layers. You MUST draw all 3 distinct cards:
   * Top Card (Tier 1 - 1st Estate / Clergy / Top Layer):
-    - Container: <rect x="180" y="150" width="440" height="90" rx="12" fill="#181D2A" stroke="{prim}" stroke-width="2"/>
+    - Container: <rect x="180" y="150" width="440" height="90" rx="12" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
     - Left Icon: A church/cross/clergy icon centered at (cx: 230, cy: 195)
     - Right Text Block:
-      * Card Title: <text x="280" y="185" fill="#F2F1ED" font-size="18" font-weight="700">1st Estate: Clergy</text>
+      * Card Title: <text x="280" y="185" fill="{text_col}" font-size="18" font-weight="700">1st Estate: Clergy</text>
       * Pill Badge: <rect x="280" y="200" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
                     <text x="370" y="217" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Privileged</text>
   * Middle Card (Tier 2 - 2nd Estate / Nobility / Middle Layer):
-    - Container: <rect x="140" y="265" width="520" height="90" rx="12" fill="#181D2A" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="140" y="265" width="520" height="90" rx="12" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Left Icon: A crown/sword/castle icon centered at (cx: 190, cy: 310)
     - Right Text Block:
-      * Card Title: <text x="240" y="300" fill="#F2F1ED" font-size="18" font-weight="700">2nd Estate: Nobility</text>
+      * Card Title: <text x="240" y="300" fill="{text_col}" font-size="18" font-weight="700">2nd Estate: Nobility</text>
       * Pill Badge: <rect x="240" y="315" width="180" height="26" rx="6" fill="#10B981" opacity="0.2"/>
                     <text x="330" y="332" fill="#10B981" font-size="12" font-weight="700" text-anchor="middle">0% Taxes • Feudal Rights</text>
   * Crushing Burden Arrow (Middle to Bottom):
     - A bold dashed red downward arrow: <path d="M 400 365 L 400 425" stroke="#EF4444" stroke-width="8" stroke-dasharray="8 6"/> with arrowhead at (400, 435).
-    - Centered Arrow Pill: <rect x="325" y="385" width="150" height="28" rx="6" fill="#0F1117" stroke="#EF4444" stroke-width="2"/>
+    - Centered Arrow Pill: <rect x="325" y="385" width="150" height="28" rx="6" fill="{sub_bg}" stroke="#EF4444" stroke-width="2"/>
       <text x="400" y="404" fill="#EF4444" font-size="12" font-weight="700" text-anchor="middle">100% TAX BURDEN</text>
   * Bottom Card (Tier 3 - 3rd Estate / Commoners - 97% of population bearing the weight):
-    - Container: <rect x="80" y="445" width="640" height="150" rx="14" fill="#1E283E" stroke="{tert}" stroke-width="2.5"/>
+    - Container: <rect x="80" y="445" width="640" height="150" rx="14" fill="{card_bg}" stroke="{tert}" stroke-width="2.5"/>
     - Left Graphics: 4-5 worker/peasant person silhouettes in a row (cx: 140, 200, 260, 320, cy: 500)
     - Right Text Block:
-      * Card Title: <text x="410" y="495" fill="#F2F1ED" font-size="22" font-weight="800">3rd Estate: Commoners</text>
+      * Card Title: <text x="410" y="495" fill="{text_col}" font-size="22" font-weight="800">3rd Estate: Commoners</text>
       * Description Pill: <rect x="410" y="515" width="260" height="32" rx="8" fill="#EF4444" opacity="0.2"/>
         <text x="540" y="536" fill="#EF4444" font-size="13" font-weight="700" text-anchor="middle">97% of People • Pays All Taxes</text>
   * Bottom Summary Pill:
-    - <rect x="120" y="650" width="560" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="678" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Deep Inequality: The majority worked to fund the elite</text>
+    - <rect x="120" y="650" width="560" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="678" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Deep Inequality: The majority worked to fund the elite</text>
 """
             }
         else: # panel_num == 3
@@ -641,7 +641,7 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
   * Top Focal Subject (Monarchy / Collapsing Old Order):
     - Centered at x: 400, y: 170 to 250.
     - Large golden royal crown tilted/falling (x: 400, y: 200) with glowing highlights.
-    - Anchored status pill directly under crown: <rect x="310" y="235" width="180" height="28" rx="14" fill="#1E222B" stroke="#EF4444" stroke-width="1.5"/>
+    - Anchored status pill directly under crown: <rect x="310" y="235" width="180" height="28" rx="14" fill="{card_bg}" stroke="#EF4444" stroke-width="1.5"/>
       <text x="400" y="253" fill="#EF4444" font-size="12" font-weight="700" text-anchor="middle">Monarchy Overthrown</text>
   * Middle Dramatic Clash / Gate:
     - Fortress stone battlements and archway centered at x: 400, y: 300 to 420.
@@ -653,8 +653,8 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
       <text x="400" y="610" fill="#3B82F6" font-size="13" font-weight="800" text-anchor="middle">Third Estate United</text>
   * ABSOLUTELY NO UNATTACHED FLOATING CORNER BADGES!
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#EF4444" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">July 1789: The People Rise to Claim Liberty and Equality</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="#EF4444" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">July 1789: The People Rise to Claim Liberty and Equality</text>
 """
             }
 
@@ -667,17 +667,17 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
 - MANDATORY GEOMETRIC LAYOUT: GENERAL_INPUT_SETUP (The Problem & Starting State)
   Focus strictly on the starting state or input! Do NOT draw future stages!
   * Top Card (Starting Condition / User Need):
-    - Container: <rect x="90" y="160" width="620" height="200" rx="16" fill="#161B26" stroke="{prim}" stroke-width="2"/>
+    - Container: <rect x="90" y="160" width="620" height="200" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
     - Icon at left (cx: 170, cy: 260) representing the starting condition or input.
     - Title at (x: 250, y: 230), status pill at (x: 250, y: 270).
   * Downward Connection Flow:
     - Direct signal arrow pointing from top card to the bottom environment.
   * Bottom Card (Initial Context / Resource Pool):
-    - Container: <rect x="90" y="420" width="620" height="210" rx="16" fill="#161B26" stroke="{sec}" stroke-width="2"/>
+    - Container: <rect x="90" y="420" width="620" height="210" rx="16" fill="{card_bg}" stroke="{sec}" stroke-width="2"/>
     - Graphic of initial materials / environment awaiting processing.
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="#262D3D" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 1: Establishing the baseline condition and input</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 1: Establishing the baseline condition and input</text>
 """
             }
         elif panel_num == 2:
@@ -691,8 +691,8 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
     - Input feed arriving from left, active transformation gears/matrix in center, converted output emerging on right.
   * Clear status badges indicating the active conversion taking place.
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{sec}" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 2: Core mechanism actively processes and transforms the input</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{sec}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 2: Core mechanism actively processes and transforms the input</text>
 """
             }
         else: # panel_num == 3
@@ -704,8 +704,8 @@ def detect_layout_archetype(topic: str, caption: str, panel_num: int, prim: str,
   * Symmetrical Split (Before vs After, or Raw Input vs Final Achievement) or Hero Certificate showcase.
   * Clean verification badges and achievement metrics.
   * Bottom Summary Pill:
-    - <rect x="100" y="660" width="600" height="46" rx="23" fill="#161B26" stroke="{prim}" stroke-width="1.5"/>
-    - <text x="400" y="688" fill="#F2F1ED" font-size="14" font-weight="600" text-anchor="middle">Step 3: Successful, verified outcome achieved</text>
+    - <rect x="100" y="660" width="600" height="46" rx="23" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+    - <text x="400" y="688" fill="{text_col}" font-size="14" font-weight="600" text-anchor="middle">Step 3: Successful, verified outcome achieved</text>
 """
             }
 
@@ -714,45 +714,85 @@ STYLE_CONFIGS = {
         "name": "Classic Comic",
         "diffusion_suffix": ", classic comic book art, bold dynamic ink lineart, vibrant flat halftone colors, retro graphic novel aesthetic, pop-art crosshatching, dramatic panel lighting, no text, no watermark, no logos",
         "svg_bg": "#181412",
+        "card_bg": "#251D19",
+        "sub_bg": "#14100E",
         "primary": "#FFB800",
         "secondary": "#EF4444",
         "tertiary": "#10B981",
         "accent": "#F59E0B",
-        "text": "#F5F5F0",
-        "visual_guidance": "Vibrant comic-book graphic novel aesthetic with punchy dynamic badge borders, clean flat fills, and expressive iconic outlines."
+        "text": "#FFF8E7",
+        "visual_guidance": "Vibrant comic-book graphic novel aesthetic with punchy dynamic badge borders, clean flat fills, and expressive iconic outlines.",
+        "svg_embellishments": """- BOLD COMIC INK: Give main cards a thick, punchy border (stroke="{prim}" stroke-width="3") with a solid offset ink shadow (<rect fill="#000000" opacity="0.6"/> offset +4px, +4px).
+- COMIC BURST BADGES: Use jagged comic explosion badges or retro comic caption boxes (<rect rx="6" .../>) for titles and step markers.
+- DYNAMIC ACTION: Use bold arrows with triangular arrowhead polygons, comic action lines, and high-energy focal points.
+- TYPOGRAPHY: Bold, impactful uppercase lettering (font-weight="900", font-family="Impact, Arial Black, sans-serif")."""
     },
     "blueprint": {
         "name": "Technical Blueprint",
         "diffusion_suffix": ", technical engineering blueprint style, deep cyan and navy monochrome schematic, clean grid lines, isometric architectural draft aesthetic, subtle chalkboard texture, precision instrumentation, no text, no watermark, no logos",
         "svg_bg": "#0B192C",
+        "card_bg": "#0F2644",
+        "sub_bg": "#071424",
         "primary": "#00D2DF",
         "secondary": "#5483B3",
-        "tertiary": "#A5D7E8",
+        "tertiary": "#93C5FD",
         "accent": "#00F0FF",
-        "text": "#F0F8FF",
-        "visual_guidance": "Technical schematic blueprint aesthetic with crisp coordinate grids, isometric block diagrams, cyan vector lines, and precision engineering annotations."
+        "text": "#E0F2FE",
+        "visual_guidance": "Technical schematic blueprint aesthetic with crisp coordinate grids, isometric block diagrams, cyan vector lines, and precision engineering annotations.",
+        "svg_embellishments": """- TECHNICAL BLUEPRINT GRID: Add an authentic drafting grid in <defs>:
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+    <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#163252" stroke-width="0.75"/>
+    <path d="M 160 0 L 0 0 0 160" fill="none" stroke="#224C7A" stroke-width="1.25"/>
+  </pattern>
+  And put <rect width="800" height="800" fill="url(#grid)"/> directly over the background!
+- DRAFTING SCHEMATICS: Draw precision engineering vector lines (stroke="{prim}" stroke-width="1.5" stroke-dasharray="6 3"), measurement dimension lines with technical arrows (<--->), and crosshairs (+) at key coordinate points.
+- ENGINEERING ANNOTATIONS: Technical labels formatted as coordinates, e.g. "[ SEC-01 // FIG. 1.0 ]" in crisp technical monospace (font-family="'SF Mono', 'Courier New', monospace")."""
     },
     "watercolor": {
         "name": "Editorial Watercolor",
         "diffusion_suffix": ", modern editorial watercolor illustration, soft pigment washes, delicate textured cotton paper, elegant organic brush strokes, muted contemporary palette, high-end science journal cover art, soft natural daylight, no text, no watermark, no logos",
         "svg_bg": "#1C1917",
+        "card_bg": "#2A221E",
+        "sub_bg": "#171412",
         "primary": "#F4A261",
         "secondary": "#E76F51",
         "tertiary": "#2A9D8F",
         "accent": "#E9C46A",
-        "text": "#FDFBF7",
-        "visual_guidance": "Artistic modern editorial watercolor aesthetic with soft warm gradients, organic rounded badge frames, and elegant minimalist diagrams."
+        "text": "#FAF7F2",
+        "visual_guidance": "Artistic modern editorial watercolor aesthetic with soft warm gradients, organic rounded badge frames, and elegant minimalist diagrams.",
+        "svg_embellishments": """- WATERCOLOR PIGMENT WASHES: Add soft radial gradients in <defs> to simulate artistic watercolor pigment bleeds:
+  <radialGradient id="washGrad" cx="50%" cy="45%" r="60%">
+    <stop offset="0%" stop-color="{prim}" stop-opacity="0.35"/>
+    <stop offset="50%" stop-color="{sec}" stop-opacity="0.12"/>
+    <stop offset="100%" stop-color="{bg_color}" stop-opacity="0"/>
+  </radialGradient>
+  Use smooth circular washes under key elements.
+- ORGANIC MINIMALISM: Use generous rounded capsules (rx="28"), delicate thin strokes (stroke-width="1.2"), and hand-drawn organic curve paths (d="M ... C ...").
+- EDITORIAL PALETTE: Earthy warm terracotta, muted sage teal, and warm ochre tones. Clean elegant typography (font-family="Georgia, 'Times New Roman', serif")."""
     },
     "cyberpunk": {
         "name": "Retro Cyberpunk",
         "diffusion_suffix": ", retro cyberpunk style, dark synthwave noir, glowing neon cyan and hot magenta rim lighting, dark reflective rainy textures, 80s futuristic HUD terminal aesthetic, high contrast, cinematic atmosphere, no text, no watermark, no logos",
-        "svg_bg": "#0D0D15",
+        "svg_bg": "#0A0A10",
+        "card_bg": "#141322",
+        "sub_bg": "#08080E",
         "primary": "#00F0FF",
         "secondary": "#FF007F",
         "tertiary": "#FFE600",
         "accent": "#BD00FF",
         "text": "#00FFCC",
-        "visual_guidance": "Cyberpunk terminal HUD aesthetic with dark space background, vivid neon wireframe boxes, glowing status pills, and high-tech circuitry cues."
+        "visual_guidance": "Cyberpunk terminal HUD aesthetic with dark space background, vivid neon wireframe boxes, glowing status pills, and high-tech circuitry cues.",
+        "svg_embellishments": """- NEON GLOW FILTER: Add an authentic SVG glow filter in <defs>:
+  <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+    <feMerge>
+      <feMergeNode in="coloredBlur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+  Apply filter="url(#neonGlow)" to prominent glowing cyan ({prim}) and hot magenta ({sec}) stroke paths!
+- HUD SCANLINES & BRACKETS: Draw futuristic HUD corner brackets [ ┌ ┐ └ ┘ ] around primary containers.
+- HIGH-TECH TELEMETRY: Glowing status pills with blinking indicators, sci-fi telemetry badges "[ SYS_DIAG // v2.4 ]", and luminous circuit traces in monospace."""
     }
 }
 
@@ -790,45 +830,164 @@ AUDIENCE_CONFIGS = {
 def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "comic") -> str:
     """
     Constructs an editorial, guaranteed-valid SVG graphic directly in Python.
-    Guarantees 0% broken images even in edge-case network or parsing failures.
+    Guarantees 0% broken images with a stunning, style-authentic visual presentation.
     """
     style_cfg = STYLE_CONFIGS.get(style, STYLE_CONFIGS["comic"])
     bg_color = style_cfg["svg_bg"]
-    accent_col = style_cfg["primary"]
-    border_col = style_cfg["secondary"]
+    card_bg = style_cfg.get("card_bg", "#161B26")
+    sub_bg = style_cfg.get("sub_bg", "#0F1117")
+    prim = style_cfg["primary"]
+    sec = style_cfg["secondary"]
+    tert = style_cfg["tertiary"]
+    accent = style_cfg["accent"]
     text_col = style_cfg["text"]
 
     clean_topic = topic.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     clean_caption = caption.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     wrapped_lines = textwrap.wrap(clean_caption, width=46)[:4]
-    caption_tspan = "".join(f'<tspan x="60" dy="24">{line}</tspan>' for line in wrapped_lines)
+    caption_tspan = "".join(f'<tspan x="80" dy="24">{line}</tspan>' for line in wrapped_lines)
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+    if style == "blueprint":
+        return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
   <defs>
-    <linearGradient id="fallbackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="{bg_color}"/>
-      <stop offset="100%" stop-color="#121417"/>
-    </linearGradient>
+    <pattern id="bpGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#163252" stroke-width="0.75"/>
+      <path d="M 160 0 L 0 0 0 160" fill="none" stroke="#224C7A" stroke-width="1.25"/>
+    </pattern>
   </defs>
-  <rect width="800" height="800" fill="url(#fallbackGrad)"/>
-  <rect x="24" y="24" width="752" height="752" rx="16" fill="none" stroke="{border_col}" stroke-width="2"/>
-  
-  <rect x="60" y="55" width="130" height="28" rx="14" fill="{bg_color}" stroke="{accent_col}" stroke-width="1.5"/>
-  <text x="125" y="74" fill="{accent_col}" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1.5">STEP {panel_num}</text>
-  
-  <text x="60" y="130" fill="{text_col}" font-family="system-ui, sans-serif" font-size="26" font-weight="700">{clean_topic}</text>
-  
-  <circle cx="400" cy="400" r="160" fill="none" stroke="{border_col}" stroke-width="4"/>
-  <circle cx="400" cy="400" r="120" fill="none" stroke="{accent_col}" stroke-width="3" stroke-dasharray="8,6"/>
-  <circle cx="400" cy="400" r="60" fill="#262930" stroke="{border_col}" stroke-width="2"/>
-  <circle cx="400" cy="400" r="18" fill="{accent_col}"/>
+  <rect width="800" height="800" fill="{bg_color}"/>
+  <rect width="800" height="800" fill="url(#bpGrid)"/>
+  <rect x="24" y="24" width="752" height="752" rx="4" fill="none" stroke="{prim}" stroke-width="1.5" stroke-dasharray="16 8"/>
 
-  <text x="60" y="650" fill="{text_col}" font-family="system-ui, sans-serif" font-size="15">
+  <rect x="50" y="50" width="260" height="32" rx="4" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+  <text x="180" y="71" fill="{prim}" font-family="'SF Mono', 'Courier New', monospace" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1.5">[ SCHEMATIC: STEP {panel_num} // ISO-26 ]</text>
+  <text x="50" y="125" fill="{text_col}" font-family="'SF Mono', 'Courier New', monospace" font-size="24" font-weight="700">{clean_topic}</text>
+
+  <rect x="120" y="180" width="560" height="400" rx="8" fill="{card_bg}" stroke="{prim}" stroke-width="2"/>
+  <path d="M 120 180 L 160 140 L 720 140 L 680 180" fill="#0C1F38" stroke="{sec}" stroke-width="1.5"/>
+  <path d="M 720 140 L 720 540 L 680 580" fill="#08182D" stroke="{sec}" stroke-width="1.5"/>
+
+  <circle cx="400" cy="380" r="140" fill="none" stroke="{sec}" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <circle cx="400" cy="380" r="90" fill="none" stroke="{prim}" stroke-width="2"/>
+  <circle cx="400" cy="380" r="40" fill="{sub_bg}" stroke="{prim}" stroke-width="1.5"/>
+  <circle cx="400" cy="380" r="8" fill="{prim}"/>
+
+  <path d="M 370 380 L 430 380 M 400 350 L 400 410" stroke="{prim}" stroke-width="2"/>
+  <path d="M 230 380 L 250 380 M 550 380 L 570 380 M 400 210 L 400 230 M 400 530 L 400 550" stroke="{sec}" stroke-width="1.5"/>
+  <text x="400" y="325" fill="{prim}" font-family="'SF Mono', monospace" font-size="12" font-weight="700" text-anchor="middle">COORD: 400x380 // DATA BUS</text>
+
+  <rect x="50" y="620" width="700" height="120" rx="6" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+  <rect x="70" y="635" width="160" height="22" rx="4" fill="{sub_bg}" stroke="{sec}" stroke-width="1"/>
+  <text x="150" y="650" fill="{sec}" font-family="'SF Mono', monospace" font-size="10" font-weight="700" text-anchor="middle">&gt; TECHNICAL SPECIFICATION</text>
+  <text x="80" y="685" fill="{text_col}" font-family="'SF Mono', 'Courier New', monospace" font-size="14">
     {caption_tspan}
   </text>
 </svg>"""
 
-def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str) -> str:
+    elif style == "cyberpunk":
+        return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <filter id="cyberGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="800" fill="{bg_color}"/>
+  <rect x="24" y="24" width="752" height="752" rx="10" fill="none" stroke="{prim}" stroke-width="1.5" opacity="0.6"/>
+
+  <path d="M 40 70 L 40 40 L 70 40 M 760 70 L 760 40 L 730 40 M 40 730 L 40 760 L 70 760 M 760 730 L 760 760 L 730 760" fill="none" stroke="{sec}" stroke-width="3" filter="url(#cyberGlow)"/>
+
+  <rect x="50" y="50" width="240" height="30" rx="4" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+  <circle cx="68" cy="65" r="5" fill="{sec}" filter="url(#cyberGlow)"/>
+  <text x="165" y="70" fill="{prim}" font-family="'Courier New', monospace" font-size="12" font-weight="900" text-anchor="middle" letter-spacing="2">SYS_TELEMETRY // P-0{panel_num}</text>
+  <text x="50" y="125" fill="{text_col}" font-family="'Impact', Arial Black, sans-serif" font-size="28" font-weight="900" letter-spacing="1">{clean_topic}</text>
+
+  <rect x="100" y="180" width="600" height="410" rx="14" fill="{card_bg}" stroke="{sec}" stroke-width="2" filter="url(#cyberGlow)"/>
+  <circle cx="400" cy="385" r="130" fill="none" stroke="{prim}" stroke-width="2" stroke-dasharray="12 6" filter="url(#cyberGlow)"/>
+  <circle cx="400" cy="385" r="80" fill="{sub_bg}" stroke="{tert}" stroke-width="2"/>
+  <polygon points="400,320 455,385 400,450 345,385" fill="{sec}" opacity="0.3" stroke="{sec}" stroke-width="2"/>
+  <circle cx="400" cy="385" r="14" fill="{prim}" filter="url(#cyberGlow)"/>
+
+  <path d="M 140 385 L 240 385 M 560 385 L 660 385" stroke="{prim}" stroke-width="3" stroke-linecap="round"/>
+  <rect x="300" y="210" width="200" height="26" rx="13" fill="{sub_bg}" stroke="{tert}" stroke-width="1.5"/>
+  <text x="400" y="227" fill="{tert}" font-family="'Courier New', monospace" font-size="11" font-weight="800" text-anchor="middle">ACTIVE_NEURAL_LINK</text>
+
+  <rect x="50" y="620" width="700" height="120" rx="8" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
+  <rect x="70" y="635" width="170" height="22" rx="4" fill="{sub_bg}" stroke="{sec}" stroke-width="1"/>
+  <text x="155" y="650" fill="{sec}" font-family="'Courier New', monospace" font-size="10" font-weight="900" text-anchor="middle">// DECRYPTED STREAM</text>
+  <text x="80" y="685" fill="{text_col}" font-family="'Courier New', monospace" font-size="14" font-weight="700">
+    {caption_tspan}
+  </text>
+</svg>"""
+
+    elif style == "watercolor":
+        return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <radialGradient id="waterWash" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="{prim}" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="{sec}" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="{bg_color}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="{bg_color}"/>
+  <circle cx="400" cy="380" r="300" fill="url(#waterWash)"/>
+  <rect x="24" y="24" width="752" height="752" rx="24" fill="none" stroke="{prim}" stroke-width="1.5" opacity="0.4"/>
+
+  <rect x="50" y="50" width="180" height="34" rx="17" fill="{card_bg}" stroke="{prim}" stroke-width="1.2"/>
+  <text x="140" y="72" fill="{prim}" font-family="Georgia, serif" font-size="13" font-style="italic" font-weight="700" text-anchor="middle">Panel {panel_num} • Editorial</text>
+  <text x="50" y="125" fill="{text_col}" font-family="Georgia, serif" font-size="26" font-weight="700">{clean_topic}</text>
+
+  <rect x="110" y="170" width="580" height="420" rx="32" fill="{card_bg}" stroke="{sec}" stroke-width="1.5" opacity="0.95"/>
+  <circle cx="400" cy="380" r="140" fill="none" stroke="{prim}" stroke-width="2.5" opacity="0.7"/>
+  <circle cx="400" cy="380" r="95" fill="none" stroke="{tert}" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <circle cx="400" cy="380" r="50" fill="{sub_bg}" stroke="{accent}" stroke-width="2"/>
+  <circle cx="400" cy="380" r="16" fill="{prim}"/>
+
+  <circle cx="280" cy="300" r="24" fill="{sub_bg}" stroke="{tert}" stroke-width="1.5"/>
+  <circle cx="520" cy="460" r="24" fill="{sub_bg}" stroke="{sec}" stroke-width="1.5"/>
+  <path d="M 298 315 C 340 350, 360 360, 385 375" fill="none" stroke="{prim}" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 415 385 C 440 400, 470 420, 502 448" fill="none" stroke="{sec}" stroke-width="1.5" stroke-linecap="round"/>
+
+  <rect x="50" y="620" width="700" height="120" rx="24" fill="{card_bg}" stroke="{sec}" stroke-width="1.2"/>
+  <rect x="80" y="635" width="130" height="24" rx="12" fill="{sub_bg}" stroke="{prim}" stroke-width="1"/>
+  <text x="145" y="651" fill="{prim}" font-family="Georgia, serif" font-size="11" font-weight="700" text-anchor="middle">EXPLANATION</text>
+  <text x="80" y="688" fill="{text_col}" font-family="Georgia, serif" font-size="15" font-style="italic">
+    {caption_tspan}
+  </text>
+</svg>"""
+
+    else:
+        return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <rect width="800" height="800" fill="{bg_color}"/>
+  
+  <rect x="32" y="32" width="744" height="744" rx="16" fill="#000000" opacity="0.6"/>
+  <rect x="24" y="24" width="744" height="744" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="3"/>
+
+  <rect x="50" y="48" width="170" height="36" rx="6" fill="{prim}" stroke="#000000" stroke-width="2"/>
+  <text x="135" y="72" fill="#000000" font-family="'Impact', Arial Black, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="1">STEP {panel_num}!</text>
+  <text x="50" y="125" fill="{text_col}" font-family="'Impact', Arial Black, sans-serif" font-size="28" font-weight="900">{clean_topic}</text>
+
+  <rect x="106" y="176" width="596" height="426" rx="12" fill="#000000" opacity="0.6"/>
+  <rect x="100" y="170" width="596" height="426" rx="12" fill="{sub_bg}" stroke="{sec}" stroke-width="3"/>
+
+  <circle cx="400" cy="380" r="140" fill="none" stroke="{prim}" stroke-width="4"/>
+  <circle cx="400" cy="380" r="100" fill="none" stroke="{sec}" stroke-width="3" stroke-dasharray="10 8"/>
+  <polygon points="400,280 425,350 500,350 440,395 465,470 400,425 335,470 360,395 300,350 375,350" fill="{prim}" stroke="#000000" stroke-width="2"/>
+  <circle cx="400" cy="380" r="22" fill="{sec}" stroke="#FFFFFF" stroke-width="2"/>
+
+  <rect x="56" y="626" width="696" height="116" rx="8" fill="#000000" opacity="0.6"/>
+  <rect x="50" y="620" width="696" height="116" rx="8" fill="{card_bg}" stroke="{prim}" stroke-width="2.5"/>
+  <rect x="70" y="632" width="120" height="24" rx="4" fill="{sec}"/>
+  <text x="130" y="648" fill="#FFFFFF" font-family="'Impact', Arial Black, sans-serif" font-size="12" font-weight="900" text-anchor="middle">PANEL {panel_num}</text>
+  <text x="80" y="682" fill="{text_col}" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="700">
+    {caption_tspan}
+  </text>
+</svg>"""
+
+def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str, style: str = "comic") -> str:
     """
     Cleans, normalizes, escapes, and validates SVG XML markup.
     Guarantees that the returned SVG is 100% valid XML and will never fail in a browser.
@@ -878,7 +1037,7 @@ def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str
             pass
 
         print(f"[SVG Sanitizer] Building guaranteed emergency valid SVG for Panel {panel_num}...", flush=True)
-        return build_fallback_svg(topic, panel_num, caption)
+        return build_fallback_svg(topic, panel_num, caption, style=style)
 
 def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: str, style: str = "comic") -> bool:
     """
@@ -893,6 +1052,8 @@ def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: st
 
         style_cfg = STYLE_CONFIGS.get(style, STYLE_CONFIGS["comic"])
         bg_color = style_cfg["svg_bg"]
+        card_bg = style_cfg.get("card_bg", "#161B26")
+        sub_bg = style_cfg.get("sub_bg", "#0F1117")
         prim = style_cfg["primary"]
         sec = style_cfg["secondary"]
         tert = style_cfg["tertiary"]
@@ -900,13 +1061,14 @@ def generate_topic_svg(topic: str, panel_num: int, caption: str, output_path: st
         text_col = style_cfg["text"]
         style_name = style_cfg["name"]
         style_guidance = style_cfg["visual_guidance"]
+        style_embellishments = style_cfg.get("svg_embellishments", "")
 
-        archetype_info = detect_layout_archetype(topic, caption, panel_num, prim, sec, tert)
+        archetype_info = detect_layout_archetype(topic, caption, panel_num, prim, sec, tert, card_bg=card_bg, sub_bg=sub_bg, text_col=text_col)
         archetype_name = archetype_info["archetype_name"]
         layout_guidance = archetype_info["layout_instructions"]
 
         prompt = f"""You are a world-class visual explainer and infographic designer (like Kurzgesagt or Vox).
-Your goal is to explain this concept visually with PERFECT geometric alignment, zero text collisions, and complete concept accuracy.
+Your goal is to explain this concept visually with PERFECT geometric alignment, zero text collisions, and complete concept accuracy in the requested aesthetic.
 
 TOPIC: {topic}
 PANEL {panel_num} OF 3: {caption}
@@ -914,6 +1076,19 @@ DOMAIN: {domain_name}
 LAYOUT ARCHETYPE: {archetype_name}
 AESTHETIC STYLE: {style_name}
 STYLE DESIGN GUIDANCE: {style_guidance}
+
+STYLE VISUAL PALETTE & THEME:
+- Canvas Background: {bg_color}
+- Container Card Fill: {card_bg}
+- Secondary / Inset Box Fill: {sub_bg}
+- Primary Accent & Borders: {prim}
+- Secondary Accent: {sec}
+- Tertiary Accent: {tert}
+- Main Text Color: {text_col}
+- Highlight Accent: {accent}
+
+MANDATORY STYLE VISUAL EMBELLISHMENTS:
+{style_embellishments}
 
 MANDATORY DESIGN & ALIGNMENT RULES:
 1. TOPIC-ACCURATE CONCEPT MAPPING:
@@ -947,7 +1122,7 @@ STRICT XML FORMAT:
 """
         response = invoke_llm_with_retry(prompt)
         raw = "".join([b["text"] for b in response.content if isinstance(b, dict) and b.get("type") == "text"]) if isinstance(response.content, list) else str(response.content)
-        svg_content = sanitize_and_validate_svg(raw, topic, panel_num, caption)
+        svg_content = sanitize_and_validate_svg(raw, topic, panel_num, caption, style=style)
 
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
@@ -1570,26 +1745,29 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
             pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
             img_saved = False
 
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0"
+            }
             if pollinations_key:
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0",
-                    "Authorization": f"Bearer {pollinations_key}"
-                }
+                headers["Authorization"] = f"Bearer {pollinations_key}"
                 image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
-                for attempt in range(2):
-                    try:
-                        img_response = requests.get(image_gen_url, headers=headers, timeout=30)
-                        if img_response.status_code == 200 and len(img_response.content) > 1000:
-                            png_path = f"data/images/panel_{panel_num}.png"
-                            with open(png_path, "wb") as f:
-                                f.write(img_response.content)
-                            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png"
-                            img_saved = True
-                            break
-                        time.sleep(1)
-                    except Exception as e:
-                        print(f"Error generating diffusion image for panel {panel_num}: {e}", flush=True)
-                        time.sleep(1)
+            else:
+                image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
+
+            print(f"[Generate] Attempting diffusion image for panel {panel_num} in '{style}' style...", flush=True)
+            try:
+                # 12-second fast attempt so IP rate-limiting doesn't hang the request
+                img_response = requests.get(image_gen_url, headers=headers, timeout=12)
+                if img_response.status_code == 200 and len(img_response.content) > 2000 and "image" in img_response.headers.get("content-type", ""):
+                    png_path = f"data/images/panel_{panel_num}.png"
+                    with open(png_path, "wb") as f:
+                        f.write(img_response.content)
+                    img_saved = True
+                    print(f"[Generate] Diffusion image saved for panel {panel_num} ({len(img_response.content)} bytes).", flush=True)
+                else:
+                    print(f"[Generate] Diffusion skipped (status={img_response.status_code}); seamlessly switching to style-specific SVG synthesizer.", flush=True)
+            except Exception as e:
+                print(f"[Generate] Diffusion error/timeout for panel {panel_num}: {e}; seamlessly switching to style-specific SVG synthesizer.", flush=True)
 
             cache_buster = int(time.time() * 1000)
             if not img_saved:
@@ -1607,8 +1785,11 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
                     panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
                     convert_svg_to_png(svg_path, png_path)
                 else:
-                    create_fallback_card(topic, panel_num, caption, png_path)
-                    panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
+                    fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
+                    with open(svg_path, "w", encoding="utf-8") as f:
+                        f.write(fallback_svg)
+                    panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+                    convert_svg_to_png(svg_path, png_path)
             else:
                 # Clean up stale svg counterpart if diffusion succeeded
                 stale_svg = f"data/images/panel_{panel_num}.svg"
@@ -1624,9 +1805,11 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
             caption = panel.get("caption", "")
             cache_buster = int(time.time() * 1000)
             svg_path = f"data/images/panel_{panel_num}.svg"
+            png_path = f"data/images/panel_{panel_num}.png"
             fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
             with open(svg_path, "w", encoding="utf-8") as f:
                 f.write(fallback_svg)
+            convert_svg_to_png(svg_path, png_path)
             panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
         return panel
 
