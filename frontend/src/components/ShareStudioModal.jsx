@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { jsPDF } from 'jspdf';
+import { jsPDF } from 'jspdf';
+import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
 
 export default function ShareStudioModal({
   isOpen,
@@ -550,13 +551,17 @@ export default function ShareStudioModal({
             </div>
             <div>
               <h3 className="text-base font-bold text-text-primary flex items-center gap-2 flex-wrap">
-                <span>LinkedIn Carousel & Share Studio</span>
+                <span>LinkedIn Carousel & Share Studio</span>
+                {SHOW_PERSONA_STYLE_FEATURE && (
+                  <>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent font-semibold uppercase">
                   {audience === 'eli5' ? '🧒 ELI5' : audience === 'pro' ? '🚀 Senior Pro' : '🎓 College'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full border border-border-dark bg-[#1A1D24] text-text-muted font-medium">
                   {style === 'blueprint' ? '📐 Blueprint' : style === 'watercolor' ? '🎨 Watercolor' : style === 'cyberpunk' ? '⚡ Cyberpunk' : '💥 Comic'}
                 </span>
+                  </>
+                )}
               </h3>
               <p className="text-xs text-text-muted">Turn your 3-panel explanation into a swipeable document carousel or high-res infographic.</p>
             </div>

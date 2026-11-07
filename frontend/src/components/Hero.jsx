@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import ComicReader from './ComicReader';
+import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
 
 
 
@@ -380,7 +381,8 @@ export default function Hero() {
 
 
 
-        {/* Multi-Persona & Art Style Engine Selectors */}
+        {/* Multi-Persona & Art Style Engine Selectors (Hidden via SHOW_PERSONA_STYLE_FEATURE toggle) */}
+        {SHOW_PERSONA_STYLE_FEATURE && (
         <div className="flex flex-col gap-3.5 text-left bg-surface/40 border border-border-dark/60 rounded-2xl p-3.5 sm:p-4 backdrop-blur-sm shadow-sm">
           {/* 1. Audience Depth */}
           <div className="flex flex-col gap-1.5">
@@ -466,6 +468,8 @@ export default function Hero() {
             </div>
           </div>
         </div>
+
+        )}
 
         {/* Upload Section */}
 
