@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Quiz from './Quiz';
 import AudioNarrationPlayer from './AudioNarrationPlayer';
 import ShareStudioModal from './ShareStudioModal';
+import PanelTutorDrawer from './PanelTutorDrawer';
 import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
 
 const ChevronLeft = () => (
@@ -24,6 +25,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
   const [isZoomed, setIsZoomed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showShareStudio, setShowShareStudio] = useState(false);
+  const [showTutorDrawer, setShowTutorDrawer] = useState(false);
 
   const handleOpenQuiz = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -338,6 +340,22 @@ export default function ComicReader({ panels, topic, audience = 'college', style
                   </svg>
                   <span>Expand</span>
                 </button>
+
+                {/* Ask AI Tutor Pill Button on Image */}
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                      window.speechSynthesis.cancel();
+                    }
+                    setIsSpeaking(false);
+                    setShowTutorDrawer(true);
+                  }}
+                  className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-[#15171A]/90 hover:bg-[#262930] border border-accent/40 hover:border-accent text-text-primary hover:text-accent transition-all cursor-pointer shadow-lg backdrop-blur-sm flex items-center gap-1.5 text-xs font-medium group"
+                  title="Ask AI Tutor about this step"
+                >
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span>Ask AI</span>
+                </button>
               </motion.div>
             ) : (
               <motion.div
@@ -370,35 +388,54 @@ export default function ComicReader({ panels, topic, audience = 'college', style
                 exit="exit"
                 className="w-full max-w-xl"
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                   <p className="text-accent text-xs tracking-[0.2em] uppercase font-semibold">
                     Panel {currentIndex + 1} of {panels.length}
                   </p>
                   
-                  <button 
-                    onClick={() => handleShare(currentPanel?.panel_number, currentPanel?.caption)}
-                    disabled={shareStatuses[currentPanel?.panel_number] === 'posting'}
-                    className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                    title="Share to LinkedIn"
-                  >
-                    {shareStatuses[currentPanel?.panel_number] === 'posting' && (
-                      <div className="w-3 h-3 rounded-full border-2 border-text-muted border-t-accent animate-spin" />
-                    )}
-                    {shareStatuses[currentPanel?.panel_number] === 'success' && (
-                      <span className="text-accent font-medium flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        Posted!
-                      </span>
-                    )}
-                    {shareStatuses[currentPanel?.panel_number] === 'error' && (
-                      <span className="text-red-400/80 font-medium">Couldn't post</span>
-                    )}
-                    {(!shareStatuses[currentPanel?.panel_number] || shareStatuses[currentPanel?.panel_number] === 'idle') && (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                      </svg>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2.5">
+                    {/* Deep Dive / Ask AI Button */}
+                    <button
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                          window.speechSynthesis.cancel();
+                        }
+                        setIsSpeaking(false);
+                        setShowTutorDrawer(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent text-accent font-semibold text-xs transition-all shadow-sm cursor-pointer group"
+                      title="Open interactive AI tutor for this step"
+                    >
+                      <span className="text-xs">💬</span>
+                      <span>Deep Dive / Ask AI</span>
+                      <span className="text-[10px] text-accent/70 hidden sm:inline group-hover:translate-x-0.5 transition-transform">→</span>
+                    </button>
+
+                    <button 
+                      onClick={() => handleShare(currentPanel?.panel_number, currentPanel?.caption)}
+                      disabled={shareStatuses[currentPanel?.panel_number] === 'posting'}
+                      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                      title="Share to LinkedIn"
+                    >
+                      {shareStatuses[currentPanel?.panel_number] === 'posting' && (
+                        <div className="w-3 h-3 rounded-full border-2 border-text-muted border-t-accent animate-spin" />
+                      )}
+                      {shareStatuses[currentPanel?.panel_number] === 'success' && (
+                        <span className="text-accent font-medium flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          Posted!
+                        </span>
+                      )}
+                      {shareStatuses[currentPanel?.panel_number] === 'error' && (
+                        <span className="text-red-400/80 font-medium">Couldn't post</span>
+                      )}
+                      {(!shareStatuses[currentPanel?.panel_number] || shareStatuses[currentPanel?.panel_number] === 'idle') && (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <p className="font-fraunces text-2xl md:text-3xl lg:text-4xl text-text-primary leading-[1.4]">
                   {currentPanel?.caption}
@@ -545,6 +582,17 @@ export default function ComicReader({ panels, topic, audience = 'college', style
         linkedinName={linkedinName}
         onConnectLinkedin={handleConnectLinkedin}
         onDirectPost={(panelNum, caption) => handleShare(panelNum || currentPanel?.panel_number || 1, caption)}
+      />
+
+      {/* Interactive AI Tutor Slide-out Drawer */}
+      <PanelTutorDrawer
+        isOpen={showTutorDrawer}
+        onClose={() => setShowTutorDrawer(false)}
+        topic={topic}
+        currentPanel={currentPanel}
+        totalPanels={panels.length}
+        audience={audience}
+        style={style}
       />
     </div>
   );

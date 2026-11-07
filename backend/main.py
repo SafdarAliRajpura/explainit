@@ -1534,6 +1534,104 @@ Return ONLY valid JSON in this exact structure:
 
 
 
+class PanelQuestionRequest(BaseModel):
+    topic: str
+    panel_number: int
+    panel_caption: str
+    question: str
+    conversation_history: Optional[List[Dict[str, str]]] = []
+    audience: Optional[str] = "college"
+    style: Optional[str] = "comic"
+
+
+@app.post("/ask-panel")
+def ask_panel(request: PanelQuestionRequest):
+    topic = request.topic.strip()
+    panel_number = request.panel_number
+    panel_caption = request.panel_caption.strip()
+    question = request.question.strip()
+    audience = (request.audience or "college").lower().strip()
+    audience_cfg = AUDIENCE_CONFIGS.get(audience, AUDIENCE_CONFIGS["college"])
+
+    # Attempt to retrieve grounded context from FAISS vector database if present
+    grounded_context = ""
+    try:
+        if os.path.exists("data/faiss_index"):
+            vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
+            results = vector_store.similarity_search_with_score(f"{topic} {panel_caption} {question}", k=3)
+            if results:
+                matched_chunks = [doc.page_content for doc, score in results if score <= 1.25]
+                if matched_chunks:
+                    grounded_context = "\n---\n".join(matched_chunks)
+    except Exception as e:
+        print(f"[AskPanel] Vector lookup skipped: {e}", flush=True)
+
+    # Format previous conversation turns if provided
+    formatted_history = ""
+    if request.conversation_history:
+        history_lines = []
+        for turn in request.conversation_history[-4:]:
+            role = "Learner" if turn.get("role") == "user" else "Tutor"
+            history_lines.append(f"{role}: {turn.get('content', '')}")
+        formatted_history = "PREVIOUS CONVERSATION ON THIS STEP:\n" + "\n".join(history_lines) + "\n\n"
+
+    source_knowledge_text = f"VERIFIED SOURCE KNOWLEDGE:\n{grounded_context}\n\n" if grounded_context else ""
+
+    prompt = f"""You are ExplainIT's interactive AI Tutor — a charismatic, insightful educator who explains concepts with pristine clarity, intuitive metaphors, and intellectual depth.
+
+The learner is inspecting Step {panel_number} of a 3-part visual explainer on "{topic}".
+CURRENT STEP {panel_number}: "{panel_caption}"
+
+AUDIENCE DEPTH: {audience_cfg['name']}
+{audience_cfg['tone_prompt']}
+
+{formatted_history}{source_knowledge_text}LEARNER QUESTION:
+"{question}"
+
+TUTOR GUIDELINES:
+1. Specifically anchor your answer in Step {panel_number}: explain what is physically, algorithmically, or historically occurring at this exact stage and why it matters.
+2. Tone & Vocabulary: Strictly match the {audience_cfg['name']} audience level (ELI5 uses everyday metaphors; College uses clear mechanics; Senior Pro uses rigorous terminology, math, and system tradeoffs).
+3. Formatting:
+   - Provide a direct, compelling response in 2-3 concise paragraphs.
+   - Use bold highlights for core mechanisms or terms.
+   - Include a concrete everyday or industry application ("🔍 In Action:" or "💡 Intuition:").
+   - Highlight any common pitfall or misconception if relevant.
+4. Suggest 2 to 3 short, curiosity-sparking follow-up questions tailored to this specific step that the user might want to click next.
+
+Return ONLY a valid JSON object with no markdown code fences and no extra text:
+{{
+  "answer": "Your structured, engaging explanation formatted with clean markdown.",
+  "suggested_followups": [
+    "Short relevant follow-up 1?",
+    "Short relevant follow-up 2?"
+  ]
+}}
+"""
+    try:
+        response = invoke_llm_with_retry(prompt)
+        raw = response.content
+        if isinstance(raw, list):
+            raw = "".join([b["text"] for b in raw if isinstance(b, dict) and b.get("type") == "text"])
+        cleaned = str(raw).strip().strip("```json").strip("```").strip()
+        data = json.loads(cleaned)
+        return {
+            "success": True,
+            "answer": data.get("answer", "").strip(),
+            "suggested_followups": data.get("suggested_followups", [])
+        }
+    except Exception as e:
+        print(f"[AskPanel] Fallback triggered: {e}", flush=True)
+        return {
+            "success": True,
+            "answer": f"### Step {panel_number}: Core Concept\n\nIn this step, **{topic}** focuses on: *\"{panel_caption}\"*.\n\n* **Why this happens:** This stage bridges the initial problem with the subsequent outcome, ensuring each transformation preserves consistency and validity.\n* **Key Takeaway:** Notice how the state changes here — without this specific mechanism, the downstream steps wouldn't hold together.\n\nFeel free to ask for a real-world example or how this connects to the next step!",
+            "suggested_followups": [
+                "Can you give me an everyday real-world example?",
+                "What is the biggest misconception about this step?",
+                "How does this step connect to the final outcome?"
+            ]
+        }
+
+
 @app.post("/upload-source")
 async def upload_source(file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".txt", ".pdf")):
