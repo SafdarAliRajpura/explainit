@@ -1849,78 +1849,32 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
     os.makedirs("data/images", exist_ok=True)
     def process_panel(panel):
-        try:
-            panel_num = panel["panel_number"]
-            caption = panel.get("caption", "")
-            raw_prompt = panel.get("image_prompt") or panel.get("scene_description", "")
-            image_prompt = raw_prompt.strip() + style_cfg["diffusion_suffix"]
-            random_seed = random.randint(1, 1000000)
-            encoded_prompt = quote(image_prompt)
+        panel_num = panel.get("panel_number", 1)
+        caption = panel.get("caption", "")
+        cache_buster = int(time.time() * 1000)
+        svg_path = f"data/images/panel_{panel_num}.svg"
+        png_path = f"data/images/panel_{panel_num}.png"
 
-            pollinations_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
-            img_saved = False
-
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ExplainIT/1.0"
-            }
-            if pollinations_key:
-                headers["Authorization"] = f"Bearer {pollinations_key}"
-                image_gen_url = f"https://gen.pollinations.ai/image/{encoded_prompt}?key={pollinations_key}&width=1024&height=1024&seed={random_seed}&nologo=true"
-            else:
-                image_gen_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={random_seed}&nologo=true"
-
-            print(f"[Generate] Attempting diffusion image for panel {panel_num} in '{style}' style...", flush=True)
+        # Remove stale png files from legacy diffusion runs so only the clean SVG is used
+        if os.path.exists(png_path):
             try:
-                # 12-second fast attempt so IP rate-limiting doesn't hang the request
-                img_response = requests.get(image_gen_url, headers=headers, timeout=12)
-                if img_response.status_code == 200 and len(img_response.content) > 2000 and "image" in img_response.headers.get("content-type", ""):
-                    png_path = f"data/images/panel_{panel_num}.png"
-                    with open(png_path, "wb") as f:
-                        f.write(img_response.content)
-                    img_saved = True
-                    print(f"[Generate] Diffusion image saved for panel {panel_num} ({len(img_response.content)} bytes).", flush=True)
-                else:
-                    print(f"[Generate] Diffusion skipped (status={img_response.status_code}); seamlessly switching to style-specific SVG synthesizer.", flush=True)
-            except Exception as e:
-                print(f"[Generate] Diffusion error/timeout for panel {panel_num}: {e}; seamlessly switching to style-specific SVG synthesizer.", flush=True)
+                os.remove(png_path)
+            except Exception:
+                pass
 
-            cache_buster = int(time.time() * 1000)
-            if not img_saved:
-                # Clean up any stale png counterpart so only the fresh svg exists
-                stale_png = f"data/images/panel_{panel_num}.png"
-                if os.path.exists(stale_png):
-                    try:
-                        os.remove(stale_png)
-                    except Exception:
-                        pass
-
-                svg_path = f"data/images/panel_{panel_num}.svg"
-                png_path = f"data/images/panel_{panel_num}.png"
-                if generate_topic_svg(topic, panel_num, caption, svg_path, style=style):
-                    panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
-                    convert_svg_to_png(svg_path, png_path)
-                else:
-                    fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
-                    with open(svg_path, "w", encoding="utf-8") as f:
-                        f.write(fallback_svg)
-                    panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
-                    convert_svg_to_png(svg_path, png_path)
+        try:
+            print(f"[Generate] Synthesizing cohesive vector infographic for panel {panel_num} in '{style}' style...", flush=True)
+            if generate_topic_svg(topic, panel_num, caption, svg_path, style=style):
+                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+                convert_svg_to_png(svg_path, png_path)
             else:
-                # Clean up stale svg counterpart if diffusion succeeded
-                stale_svg = f"data/images/panel_{panel_num}.svg"
-                if os.path.exists(stale_svg):
-                    try:
-                        os.remove(stale_svg)
-                    except Exception:
-                        pass
-                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.png?t={cache_buster}"
+                fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
+                with open(svg_path, "w", encoding="utf-8") as f:
+                    f.write(fallback_svg)
+                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+                convert_svg_to_png(svg_path, png_path)
         except Exception as e:
-            print(f"[Generate] Emergency fallback in process_panel for panel {panel.get('panel_number')}: {e}", flush=True)
-            panel_num = panel.get("panel_number", 1)
-            caption = panel.get("caption", "")
-            cache_buster = int(time.time() * 1000)
-            svg_path = f"data/images/panel_{panel_num}.svg"
-            png_path = f"data/images/panel_{panel_num}.png"
+            print(f"[Generate] Emergency fallback in process_panel for panel {panel_num}: {e}", flush=True)
             fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
             with open(svg_path, "w", encoding="utf-8") as f:
                 f.write(fallback_svg)
