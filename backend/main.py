@@ -725,7 +725,7 @@ STYLE_CONFIGS = {
         "svg_embellishments": """- BOLD COMIC INK: Give main cards a thick, punchy border (stroke="{prim}" stroke-width="3") with a solid offset ink shadow (<rect fill="#000000" opacity="0.6"/> offset +4px, +4px).
 - COMIC BURST BADGES: Use jagged comic explosion badges or retro comic caption boxes (<rect rx="6" .../>) for titles and step markers.
 - DYNAMIC ACTION: Use bold arrows with triangular arrowhead polygons, comic action lines, and high-energy focal points.
-- TYPOGRAPHY: Bold, impactful uppercase lettering (font-weight="900", font-family="Impact, Arial Black, sans-serif")."""
+- TYPOGRAPHY: Clean, modern, highly legible sans-serif lettering (font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"). Use font-weight="600" for titles and badges, and font-weight="500" or "400" for descriptions. NEVER use heavy or compressed fonts like Impact or Arial Black, and NEVER use font-weight="900" or "800"."""
     },
     "blueprint": {
         "name": "Technical Blueprint",
@@ -902,8 +902,8 @@ def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "c
 
   <rect x="50" y="50" width="240" height="30" rx="4" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
   <circle cx="68" cy="65" r="5" fill="{sec}" filter="url(#cyberGlow)"/>
-  <text x="165" y="70" fill="{prim}" font-family="'Courier New', monospace" font-size="12" font-weight="900" text-anchor="middle" letter-spacing="2">SYS_TELEMETRY // P-0{panel_num}</text>
-  <text x="50" y="125" fill="{text_col}" font-family="'Impact', Arial Black, sans-serif" font-size="28" font-weight="900" letter-spacing="1">{clean_topic}</text>
+  <text x="165" y="70" fill="{prim}" font-family="'Courier New', monospace" font-size="12" font-weight="600" text-anchor="middle" letter-spacing="2">SYS_TELEMETRY // P-0{panel_num}</text>
+  <text x="50" y="125" fill="{text_col}" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" letter-spacing="0.5">{clean_topic}</text>
 
   <rect x="100" y="180" width="600" height="410" rx="14" fill="{card_bg}" stroke="{sec}" stroke-width="2" filter="url(#cyberGlow)"/>
   <circle cx="400" cy="385" r="130" fill="none" stroke="{prim}" stroke-width="2" stroke-dasharray="12 6" filter="url(#cyberGlow)"/>
@@ -913,11 +913,11 @@ def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "c
 
   <path d="M 140 385 L 240 385 M 560 385 L 660 385" stroke="{prim}" stroke-width="3" stroke-linecap="round"/>
   <rect x="300" y="210" width="200" height="26" rx="13" fill="{sub_bg}" stroke="{tert}" stroke-width="1.5"/>
-  <text x="400" y="227" fill="{tert}" font-family="'Courier New', monospace" font-size="11" font-weight="800" text-anchor="middle">ACTIVE_NEURAL_LINK</text>
+  <text x="400" y="227" fill="{tert}" font-family="'Courier New', monospace" font-size="11" font-weight="600" text-anchor="middle">ACTIVE_NEURAL_LINK</text>
 
   <rect x="50" y="620" width="700" height="120" rx="8" fill="{card_bg}" stroke="{prim}" stroke-width="1.5"/>
   <rect x="70" y="635" width="170" height="22" rx="4" fill="{sub_bg}" stroke="{sec}" stroke-width="1"/>
-  <text x="155" y="650" fill="{sec}" font-family="'Courier New', monospace" font-size="10" font-weight="900" text-anchor="middle">// DECRYPTED STREAM</text>
+  <text x="155" y="650" fill="{sec}" font-family="'Courier New', monospace" font-size="10" font-weight="600" text-anchor="middle">// DECRYPTED STREAM</text>
   <text x="80" y="685" fill="{text_col}" font-family="'Courier New', monospace" font-size="14" font-weight="700">
     {caption_tspan}
   </text>
@@ -967,8 +967,8 @@ def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "c
   <rect x="24" y="24" width="744" height="744" rx="16" fill="{card_bg}" stroke="{prim}" stroke-width="3"/>
 
   <rect x="50" y="48" width="170" height="36" rx="6" fill="{prim}" stroke="#000000" stroke-width="2"/>
-  <text x="135" y="72" fill="#000000" font-family="'Impact', Arial Black, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="1">STEP {panel_num}!</text>
-  <text x="50" y="125" fill="{text_col}" font-family="'Impact', Arial Black, sans-serif" font-size="28" font-weight="900">{clean_topic}</text>
+  <text x="135" y="72" fill="#000000" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" text-anchor="middle" letter-spacing="1">STEP {panel_num}</text>
+  <text x="50" y="125" fill="{text_col}" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600">{clean_topic}</text>
 
   <rect x="106" y="176" width="596" height="426" rx="12" fill="#000000" opacity="0.6"/>
   <rect x="100" y="170" width="596" height="426" rx="12" fill="{sub_bg}" stroke="{sec}" stroke-width="3"/>
@@ -981,7 +981,7 @@ def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "c
   <rect x="56" y="626" width="696" height="116" rx="8" fill="#000000" opacity="0.6"/>
   <rect x="50" y="620" width="696" height="116" rx="8" fill="{card_bg}" stroke="{prim}" stroke-width="2.5"/>
   <rect x="70" y="632" width="120" height="24" rx="4" fill="{sec}"/>
-  <text x="130" y="648" fill="#FFFFFF" font-family="'Impact', Arial Black, sans-serif" font-size="12" font-weight="900" text-anchor="middle">PANEL {panel_num}</text>
+  <text x="130" y="648" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" text-anchor="middle">PANEL {panel_num}</text>
   <text x="80" y="682" fill="{text_col}" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="700">
     {caption_tspan}
   </text>
@@ -1019,6 +1019,36 @@ def sanitize_and_validate_svg(raw: str, topic: str, panel_num: int, caption: str
 
     # 4. Remove ghost shadow text with low opacity
     svg_content = re.sub(r"""<text\b[^>]*\bopacity=['"](?:0\.[0-3]\d*|\.[0-3]\d*)['"][^>]*>[\s\S]*?<\/text>""", "", svg_content)
+
+    # 5. Normalize SVG Typography: Replace heavy/compressed display fonts (Impact, Arial Black) with clean modern sans-serif
+    svg_content = re.sub(
+        r"""font-family\s*=\s*['"][^'"]*?(?:Impact|Arial\s+Black)[^'"]*?['"]""",
+        'font-family="system-ui, -apple-system, \'Segoe UI\', Roboto, sans-serif"',
+        svg_content,
+        flags=re.IGNORECASE
+    )
+
+    # 6. Clamp heavy font weights (900, 800, bold, bolder, black, heavy) to balanced 600
+    svg_content = re.sub(
+        r"""font-weight\s*=\s*['"](?:900|800|bold|bolder|black|heavy)['"]""",
+        'font-weight="600"',
+        svg_content,
+        flags=re.IGNORECASE
+    )
+
+    # 7. Clamp inline styles if any
+    svg_content = re.sub(
+        r"""font-weight\s*:\s*(?:900|800|bold|bolder|black|heavy)""",
+        'font-weight: 600',
+        svg_content,
+        flags=re.IGNORECASE
+    )
+    svg_content = re.sub(
+        r"""font-family\s*:\s*[^;"]*?(?:Impact|Arial\s+Black)[^;"]*?""",
+        'font-family: system-ui, -apple-system, sans-serif;',
+        svg_content,
+        flags=re.IGNORECASE
+    )
 
     # 4. In-Memory XML Validation Pass
     try:
@@ -1106,7 +1136,11 @@ MANDATORY DESIGN & ALIGNMENT RULES:
    - No floating badges in random corners.
 4. VISUAL FIRST, MINIMAL WORDS:
    - Maximum 3 to 5 simple, friendly words per badge. No dense sentences or math formulas.
-5. CANVAS SPECIFICATIONS:
+5. MODERN, BALANCED TYPOGRAPHY (ZERO CHUNKY FONTS):
+   - Font Family: Use clean modern system sans-serif: font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" (or monospace font-family="'SF Mono', 'Courier New', monospace" for code/technical blueprints).
+   - Font Weights: Use font-weight="600" for titles and badges. Use font-weight="400" or "500" for secondary labels and descriptions.
+   - STRICTLY FORBIDDEN: NEVER use "Impact", "Arial Black", and NEVER use font-weight="900" or font-weight="800". All typography must look modern, balanced, refined, and readable.
+6. CANVAS SPECIFICATIONS:
    - Root: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
    - Background: <rect width="800" height="800" fill="{bg_color}"/>
    - Palette: Primary Accent: {prim}, Secondary Accent: {sec}, Tertiary Accent: {tert}, Text: {text_col}, Highlight: {accent}.
