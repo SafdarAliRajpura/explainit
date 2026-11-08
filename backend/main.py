@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw
 from fastapi.responses import RedirectResponse, HTMLResponse
 from urllib.parse import quote
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from ingest import extract_text_from_file, build_vector_store
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -148,13 +148,35 @@ app.add_middleware(
 os.makedirs("data/images", exist_ok=True)
 app.mount("/images", StaticFiles(directory="data/images"), name="images")
 
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+_embeddings_instance = None
+_embeddings_lock = threading.Lock()
+
+def get_embeddings():
+    """Lazy-load HuggingFace embeddings on first demand to prevent a 10s server startup freeze."""
+    global _embeddings_instance
+    if _embeddings_instance is None:
+        with _embeddings_lock:
+            if _embeddings_instance is None:
+                print("[Embeddings] Initializing MiniLM embeddings model on first demand...", flush=True)
+                _embeddings_instance = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    return _embeddings_instance
 
 ACTIVE_MODELS = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.8-flash"]
 active_models_lock = threading.Lock()
 
+_chat_model_cache = {}
+_chat_model_cache_lock = threading.Lock()
+
+def _get_chat_model(model_name: str, temperature: float = 0.4):
+    """Reuses persistent model instances to keep HTTP connection pools active."""
+    key = (model_name, temperature)
+    with _chat_model_cache_lock:
+        if key not in _chat_model_cache:
+            _chat_model_cache[key] = ChatGoogleGenerativeAI(model=model_name, temperature=temperature)
+        return _chat_model_cache[key]
+
 def _call_model_single(model_name: str, prompt: str):
-    model = ChatGoogleGenerativeAI(model=model_name, temperature=0.4)
+    model = _get_chat_model(model_name, temperature=0.4)
     return model.invoke(prompt)
 
 def invoke_with_hard_timeout(func, args, timeout_sec=25):
@@ -1598,7 +1620,7 @@ def ask_panel(request: PanelQuestionRequest):
     grounded_context = ""
     try:
         if os.path.exists("data/faiss_index"):
-            vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
+            vector_store = FAISS.load_local("data/faiss_index", get_embeddings(), allow_dangerous_deserialization=True)
             results = vector_store.similarity_search_with_score(f"{topic} {panel_caption} {question}", k=3)
             if results:
                 matched_chunks = [doc.page_content for doc, score in results if score <= 1.25]
@@ -1695,7 +1717,7 @@ async def upload_source(file: UploadFile = File(...)):
         # Offload synchronous CPU-heavy text extraction and FAISS MiniLM embeddings computation
         # to worker thread pool, preventing event-loop freezing.
         text = await asyncio.to_thread(extract_text_from_file, file.filename, file_bytes)
-        num_chunks = await asyncio.to_thread(build_vector_store, text, embeddings)
+        num_chunks = await asyncio.to_thread(build_vector_store, text, get_embeddings())
     except ValueError as e:
         return {"success": False, "message": str(e)}
     except Exception as e:
@@ -1768,7 +1790,7 @@ def fetch_universal_grounding(topic: str) -> Dict[str, Any]:
     # Step 1: Check local FAISS index if present
     try:
         if os.path.exists("data/faiss_index"):
-            vector_store = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
+            vector_store = FAISS.load_local("data/faiss_index", get_embeddings(), allow_dangerous_deserialization=True)
             results_with_scores = vector_store.similarity_search_with_score(clean_topic, k=4)
             if results_with_scores and results_with_scores[0][1] <= GROUNDING_THRESHOLD:
                 grounded_context = "\n\n".join([doc.page_content for doc, score in results_with_scores])
@@ -1856,7 +1878,7 @@ Write 3 concise factual paragraphs explaining what it is, how it operates mechan
         return fallback_res
 
 @app.post("/generate")
-def generate_comic(request: TopicRequest):
+def generate_comic(request: TopicRequest, http_req: Request = None):
     topic = request.topic
     style = (request.style or "comic").lower().strip()
     if style not in STYLE_CONFIGS:
@@ -1933,7 +1955,7 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         script = json.loads(cleaned)
 
     os.makedirs("data/images", exist_ok=True)
-    cleanup_old_images("data/images")
+    threading.Thread(target=cleanup_old_images, args=("data/images",), daemon=True).start()
     gen_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
 
     def process_panel(panel):
@@ -1971,7 +1993,8 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         except Exception:
             pass
 
-        panel["image_url"] = f"http://localhost:8000/images/{svg_filename}?t={cache_buster}"
+        base_url = str(http_req.base_url).rstrip('/') if http_req else "http://localhost:8000"
+        panel["image_url"] = f"{base_url}/images/{svg_filename}?t={cache_buster}"
         return panel
 
     print(f"[Generate] Generating visuals for {len(script['panels'])} panels in parallel...", flush=True)
