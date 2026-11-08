@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Quiz from './Quiz';
 import AudioNarrationPlayer from './AudioNarrationPlayer';
 import ShareStudioModal from './ShareStudioModal';
 import PanelTutorDrawer from './PanelTutorDrawer';
-import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
+import { API_ENDPOINTS } from '../config/api';
 
 const ChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -18,7 +18,7 @@ const ChevronRight = () => (
   </svg>
 );
 
-export default function ComicReader({ panels, topic, audience = 'college', style = 'comic', sourceCitation, onReset }) {
+export default function ComicReader({ panels, topic, sourceCitation, onReset }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -26,6 +26,29 @@ export default function ComicReader({ panels, topic, audience = 'college', style
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showShareStudio, setShowShareStudio] = useState(false);
   const [showTutorDrawer, setShowTutorDrawer] = useState(false);
+
+  const pollTimerRef = useRef(null);
+  const popupRef = useRef(null);
+
+  // M-05 & M-06: Cleanup timers and cancel speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      if (popupRef.current && !popupRef.current.closed) {
+        try {
+          popupRef.current.close();
+        } catch {
+          // ignore COOP errors
+        }
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const handleOpenQuiz = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -43,7 +66,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
   useEffect(() => {
     const checkLinkedinStatus = async () => {
       try {
-        const response = await fetch('http://localhost:8000/auth/linkedin/status');
+        const response = await fetch(API_ENDPOINTS.LINKEDIN_STATUS);
         const data = await response.json();
         if (data.connected) {
           setLinkedinConnected(true);
@@ -60,33 +83,68 @@ export default function ComicReader({ panels, topic, audience = 'college', style
 
   const handleConnectLinkedin = () => {
     return new Promise((resolve) => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+
       const width = 600;
       const height = 700;
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
       const popup = window.open(
-        'http://localhost:8000/auth/linkedin/login',
+        API_ENDPOINTS.LINKEDIN_LOGIN,
         'linkedin_login',
         `width=${width},height=${height},top=${top},left=${left}`
       );
+      popupRef.current = popup;
 
-      const pollTimer = setInterval(async () => {
-        if (popup && popup.closed) {
-          clearInterval(pollTimer);
-          resolve(false);
-        }
+      if (!popup) {
+        console.warn('LinkedIn login popup was blocked by browser.');
+        resolve(false);
+        return;
+      }
+
+      let pollCount = 0;
+      const MAX_POLLS = 60; // 120s timeout
+
+      pollTimerRef.current = setInterval(async () => {
+        pollCount += 1;
+        let isClosed = false;
         try {
-          const response = await fetch('http://localhost:8000/auth/linkedin/status');
+          isClosed = !popupRef.current || popupRef.current.closed;
+        } catch {
+          // cross-origin restriction
+        }
+
+        if (isClosed || pollCount >= MAX_POLLS) {
+          if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
+          resolve(false);
+          return;
+        }
+
+        try {
+          const response = await fetch(API_ENDPOINTS.LINKEDIN_STATUS);
           const data = await response.json();
           if (data.connected) {
             setLinkedinConnected(true);
             setLinkedinName(data.name);
-            clearInterval(pollTimer);
-            if (popup && !popup.closed) popup.close();
+            if (pollTimerRef.current) {
+              clearInterval(pollTimerRef.current);
+              pollTimerRef.current = null;
+            }
+            try {
+              if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+            } catch {
+              // ignore
+            }
             resolve(true);
           }
-        } catch (err) {
-          // Ignore fetch errors during polling
+        } catch {
+          // Ignore transient fetch errors during polling
         }
       }, 2000);
     });
@@ -101,7 +159,9 @@ export default function ComicReader({ panels, topic, audience = 'college', style
     setShareStatuses(prev => ({ ...prev, [panelNum]: 'posting' }));
 
     try {
-      const url = `http://localhost:8000/linkedin/post-panel?panel_number=${panelNum}&caption=${encodeURIComponent(caption)}`;
+      const currentPanelObj = panels.find(p => p.panel_number === panelNum) || panels[panelNum - 1];
+      const imageFilename = currentPanelObj?.image_url ? new URL(currentPanelObj.image_url).pathname.split('/').pop() : '';
+      const url = `${API_ENDPOINTS.LINKEDIN_POST_PANEL}?panel_number=${panelNum}&caption=${encodeURIComponent(caption)}${imageFilename ? `&image_filename=${encodeURIComponent(imageFilename)}` : ''}`;
       const response = await fetch(url, { method: 'POST' });
       const data = await response.json();
 
@@ -150,12 +210,18 @@ export default function ComicReader({ panels, topic, audience = 'college', style
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'ArrowRight') goToNext();
-      if (e.key === 'ArrowLeft') goToPrev();
+      if (e.key === 'ArrowRight') {
+        setDirection(1);
+        setCurrentIndex(prev => (prev < panels.length - 1 ? prev + 1 : prev));
+      }
+      if (e.key === 'ArrowLeft') {
+        setDirection(-1);
+        setCurrentIndex(prev => (prev > 0 ? prev - 1 : prev));
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, panels.length]);
+  }, [panels.length]);
 
   const variants = {
     initial: (dir) => ({
@@ -197,7 +263,6 @@ export default function ComicReader({ panels, topic, audience = 'college', style
         </div>
         <Quiz
           topic={topic}
-          audience={audience}
           onBackToComic={() => setShowQuiz(false)}
           onReset={onReset}
         />
@@ -242,20 +307,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
               </span>
             )}
           </div>
-
-          {/* Persona & Aesthetic Metadata Pill (Hidden via SHOW_PERSONA_STYLE_FEATURE toggle) */}
-          {SHOW_PERSONA_STYLE_FEATURE && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border-dark bg-surface text-xs shadow-sm">
-            <span className="font-semibold text-accent flex items-center gap-1">
-              <span>{audience === 'eli5' ? '🧒 ELI5' : audience === 'pro' ? '🚀 Senior Pro' : '🎓 College'}</span>
-            </span>
-            <span className="text-border-dark">•</span>
-            <span className="text-text-primary font-medium flex items-center gap-1">
-              <span>{style === 'blueprint' ? '📐 Blueprint' : style === 'watercolor' ? '🎨 Watercolor' : style === 'cyberpunk' ? '⚡ Cyberpunk' : '💥 Comic'}</span>
-            </span>
-          </div>
-        )}
-        </div>
+</div>
 
         {/* Right Header Actions: AI Audio Narrator + LinkedIn */}
         <div className="flex items-center gap-3 flex-wrap">
@@ -593,9 +645,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
         onClose={() => setShowShareStudio(false)}
         topic={topic}
         panels={panels}
-        audience={audience}
-        style={style}
-        linkedinConnected={linkedinConnected}
+linkedinConnected={linkedinConnected}
         linkedinName={linkedinName}
         onConnectLinkedin={handleConnectLinkedin}
         onDirectPost={(panelNum, caption) => handleShare(panelNum || currentPanel?.panel_number || 1, caption)}
@@ -608,9 +658,7 @@ export default function ComicReader({ panels, topic, audience = 'college', style
         topic={topic}
         currentPanel={currentPanel}
         totalPanels={panels.length}
-        audience={audience}
-        style={style}
-        sourceCitation={sourceCitation}
+sourceCitation={sourceCitation}
       />
     </div>
   );

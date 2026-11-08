@@ -133,6 +133,7 @@ export default function AudioNarrationPlayer({
     if (isSpeaking && !isPaused) {
       playSpeech(currentIndex);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
   // 4. Cleanup on unmount

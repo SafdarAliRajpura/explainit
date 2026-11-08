@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import ComicReader from './ComicReader';
-import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
+import { API_ENDPOINTS } from '../config/api';
 
 
 
@@ -53,60 +53,20 @@ export default function Hero() {
 
   const [uploadMessage, setUploadMessage] = useState('');
 
-
-
-  // Persona (Audience Depth) & Art Style states
-
-  const [audience, setAudience] = useState(() => {
-
-    if (typeof window !== 'undefined') {
-
-      return localStorage.getItem('explainit_audience') || 'college';
-
-    }
-
-    return 'college';
-
-  });
-
-
-
-  const [style, setStyle] = useState(() => {
-
-    if (typeof window !== 'undefined') {
-
-      return localStorage.getItem('explainit_style') || 'comic';
-
-    }
-
-    return 'comic';
-
-  });
-
-
-
   // Cycle loading messages
-
   useEffect(() => {
-
-    let interval;
-
-    if (status === 'loading') {
-
-      interval = setInterval(() => {
-
-        setLoadingIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-
-      }, 4500);
-
-    } else {
-
-      setLoadingIndex(0);
-
+    if (status !== 'loading') {
+      return;
     }
 
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      setLoadingIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 4500);
 
+    return () => {
+      clearInterval(interval);
+      setLoadingIndex(0);
+    };
   }, [status]);
 
 
@@ -121,13 +81,12 @@ export default function Hero() {
     setSourceCitation(null);
 
     try {
-      const response = await fetch('http://localhost:8000/generate', {
+      const response = await fetch(API_ENDPOINTS.GENERATE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           topic: topicToUse,
-          audience,
-          style
+          style: 'comic'
         })
       });
 
@@ -145,7 +104,7 @@ export default function Hero() {
         setErrorMessage(data.message || "Could not ground the topic in real sources.");
         setStatus('refused');
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Couldn't reach the server. Is the backend running?");
       setStatus('error');
     }
@@ -180,7 +139,7 @@ export default function Hero() {
 
     try {
 
-      const response = await fetch('http://localhost:8000/upload-source', {
+      const response = await fetch(API_ENDPOINTS.UPLOAD_SOURCE, {
 
         method: 'POST',
 
@@ -210,7 +169,7 @@ export default function Hero() {
 
       }
 
-    } catch (err) {
+    } catch {
 
       setUploadStatus('error');
 
@@ -385,99 +344,7 @@ export default function Hero() {
           </div>
         </div>
 
-
-
-        {/* Multi-Persona & Art Style Engine Selectors (Hidden via SHOW_PERSONA_STYLE_FEATURE toggle) */}
-        {SHOW_PERSONA_STYLE_FEATURE && (
-        <div className="flex flex-col gap-3.5 text-left bg-surface/40 border border-border-dark/60 rounded-2xl p-3.5 sm:p-4 backdrop-blur-sm shadow-sm">
-          {/* 1. Audience Depth */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-xs px-0.5">
-              <span className="text-[11px] font-semibold tracking-wider uppercase text-text-muted/80">
-                Audience Depth
-              </span>
-              <span className="text-[11px] text-accent/90 font-medium">
-                {audience === 'eli5' && '🧒 Simple metaphors & analogies'}
-                {audience === 'college' && '🎓 Core mechanics & principles'}
-                {audience === 'pro' && '🚀 System architecture & tradeoffs'}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 w-full">
-              {[
-                { id: 'eli5', label: 'ELI5', icon: '🧒' },
-                { id: 'college', label: 'College', icon: '🎓' },
-                { id: 'pro', label: 'Senior Pro', icon: '🚀' }
-              ].map((lvl) => {
-                const isSelected = audience === lvl.id;
-                return (
-                  <button
-                    key={lvl.id}
-                    type="button"
-                    onClick={() => {
-                      setAudience(lvl.id);
-                      if (typeof window !== 'undefined') localStorage.setItem('explainit_audience', lvl.id);
-                    }}
-                    className={`h-10 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
-                      isSelected 
-                        ? 'bg-accent/15 border-accent text-accent shadow-[0_0_12px_rgba(232,163,61,0.22)] font-semibold ring-1 ring-accent/30' 
-                        : 'bg-surface/70 border-border-dark text-text-muted hover:border-text-muted/60 hover:text-text-primary hover:bg-surface'
-                    }`}
-                  >
-                    <span className="text-sm shrink-0">{lvl.icon}</span>
-                    <span className="tracking-tight">{lvl.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2. Visual Aesthetic */}
-          <div className="flex flex-col gap-1.5 pt-2.5 border-t border-border-dark/40">
-            <div className="flex items-center justify-between text-xs px-0.5">
-              <span className="text-[11px] font-semibold tracking-wider uppercase text-text-muted/80">
-                Visual Aesthetic
-              </span>
-              <span className="text-[11px] text-text-muted/80">
-                {style === 'comic' && '💥 Bold ink graphic novel'}
-                {style === 'blueprint' && '📐 Technical schematics & grid'}
-                {style === 'watercolor' && '🎨 Soft editorial watercolor'}
-                {style === 'cyberpunk' && '⚡ Dark synthwave neon HUD'}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
-              {[
-                { id: 'comic', label: 'Classic Comic', dot: 'bg-amber-400' },
-                { id: 'blueprint', label: 'Blueprint', dot: 'bg-cyan-400' },
-                { id: 'watercolor', label: 'Watercolor', dot: 'bg-rose-400' },
-                { id: 'cyberpunk', label: 'Cyberpunk', dot: 'bg-fuchsia-400' }
-              ].map((st) => {
-                const isSelected = style === st.id;
-                return (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => {
-                      setStyle(st.id);
-                      if (typeof window !== 'undefined') localStorage.setItem('explainit_style', st.id);
-                    }}
-                    className={`h-9 flex items-center justify-center gap-1.5 px-2 rounded-xl border text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                      isSelected 
-                        ? 'bg-[#1C2028] border-accent/80 text-text-primary shadow-[0_0_12px_rgba(232,163,61,0.15)] font-semibold ring-1 ring-accent/20' 
-                        : 'bg-surface/70 border-border-dark text-text-muted hover:border-text-muted/60 hover:text-text-primary hover:bg-surface'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot} ${isSelected ? 'scale-110' : 'opacity-50'}`} />
-                    <span className="tracking-tight">{st.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        )}
-
-        {/* Upload Section */}
+{/* Upload Section */}
 
         <div className="flex flex-col items-center gap-4 border-t border-border-dark pt-6 w-full relative">
 
@@ -855,24 +722,17 @@ export default function Hero() {
 
         panels={panels} 
 
-        topic={topic} 
-
-        audience={audience}
-
-        style={style}
-
+        topic={topic}
         sourceCitation={sourceCitation}
 
-        onReset={() => {
-
+                onReset={() => {
+          if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+          }
           setStatus('idle');
-
           setTopic('');
-
           setPanels([]);
-
           setSourceCitation(null);
-
         }} 
 
       />

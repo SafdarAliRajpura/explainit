@@ -1,4 +1,8 @@
 import os
+import asyncio
+from collections import OrderedDict
+import uuid
+import shutil
 import re
 import time
 import json
@@ -52,6 +56,42 @@ def create_fallback_card(topic: str, panel_num: int, caption: str, output_path: 
     img.save(output_path)
 
 
+
+def cleanup_old_images(directory: str = "data/images", max_age_seconds: int = 86400, max_files: int = 150):
+    """
+    Safely prunes session-scoped images older than max_age_seconds or when total files exceed max_files.
+    Preserves default panel_*.svg/png pointers.
+    """
+    try:
+        if not os.path.exists(directory):
+            return
+        now = time.time()
+        files = []
+        for fname in os.listdir(directory):
+            if fname.startswith("panel_"):
+                continue  # Keep legacy/latest pointers
+            fpath = os.path.join(directory, fname)
+            if os.path.isfile(fpath):
+                files.append((fpath, os.path.getmtime(fpath)))
+        
+        # Sort oldest first
+        files.sort(key=lambda x: x[1])
+        while len(files) > max_files:
+            fpath, _ = files.pop(0)
+            try:
+                os.remove(fpath)
+            except Exception:
+                pass
+
+        for fpath, mtime in files:
+            if now - mtime > max_age_seconds:
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"[Cleanup] Error pruning images: {e}", flush=True)
+
 def convert_svg_to_png(svg_path: str, png_path: str):
     """
     Renders SVG to PNG using resvg-py with a solid dark background (#0F1117)
@@ -91,16 +131,26 @@ async def add_cache_control_headers(request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:4173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:4173",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+os.makedirs("data/images", exist_ok=True)
 app.mount("/images", StaticFiles(directory="data/images"), name="images")
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-ACTIVE_MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
+ACTIVE_MODELS = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.8-flash"]
 active_models_lock = threading.Lock()
 
 def _call_model_single(model_name: str, prompt: str):
@@ -132,7 +182,7 @@ def invoke_with_hard_timeout(func, args, timeout_sec=25):
         raise err[0]
     return res[0]
 
-def invoke_llm_with_retry(prompt: str, max_retries: int = 1, timeout_per_call: int = 25):
+def invoke_llm_with_retry(prompt: str, max_retries: int = 2, timeout_per_call: int = 25):
     """
     Invokes Google Gemini with guaranteed daemon hard timeout and instant failover across healthy models.
     Prioritizes gemini-3.5-flash for fastest response times.
@@ -797,37 +847,6 @@ STYLE_CONFIGS = {
     }
 }
 
-AUDIENCE_CONFIGS = {
-    "eli5": {
-        "name": "ELI5 (Beginner)",
-        "tone_prompt": """AUDIENCE LEVEL: ELI5 (Explain Like I'm 5 / Complete Beginner).
-- Tone: Playful, warm, clear, vivid, and memorable.
-- Analogy Requirement: Use a strong everyday metaphor or analogy (e.g. kitchen recipes, detective & art forger, playgrounds, puzzle pieces, sports).
-- Vocabulary: Zero intimidating academic jargon. If you must use a technical term, define it instantly with a simple metaphor.
-- Captions must feel exciting, accessible, and delightful to a beginner or child.""",
-        "quiz_prompt": "Craft fun, friendly, and intuitive multiple-choice questions focusing on the central metaphors and concepts. Keep phrasing upbeat and easy to understand.",
-        "linkedin_prompt": "Write with a friendly, highly accessible 'ELI5 / simplified breakdown' voice that anyone from beginners to curious learners can instantly grasp and enjoy."
-    },
-    "college": {
-        "name": "College (Standard)",
-        "tone_prompt": """AUDIENCE LEVEL: College / General Tech Audience (Standard).
-- Tone: Engaging, structured, and informative.
-- Narrative: Clear step-by-step mechanism breakdown: starting input/problem -> core transformation/action -> validated final outcome.
-- Vocabulary: Standard foundational concepts, clear terminology, and practical real-world context.""",
-        "quiz_prompt": "Craft balanced questions testing conceptual comprehension and core mechanics.",
-        "linkedin_prompt": "Write with a sharp, professional educational voice tailored for curious professionals and students."
-    },
-    "pro": {
-        "name": "Senior Engineer (Pro)",
-        "tone_prompt": """AUDIENCE LEVEL: Senior Engineer / Technical Expert (Deep Dive).
-- Tone: Rigorous, analytical, direct, and architecture-focused.
-- Technical Rigor: Highlight specific algorithmic mechanisms, objective functions/mathematical formulations, system bottlenecks, latency vs. throughput tradeoffs, and edge case handling.
-- Vocabulary: Industry-grade terminology (e.g., loss divergence, backprop gradients, state space, memory complexity).""",
-        "quiz_prompt": "Craft advanced technical scenario questions testing architectural understanding, tradeoffs, and system constraints.",
-        "linkedin_prompt": "Write with an authoritative, engineering-grade perspective focusing on system architecture, operational tradeoffs, and deep technical insights."
-    }
-}
-
 def build_fallback_svg(topic: str, panel_num: int, caption: str, style: str = "comic") -> str:
     """
     Constructs an editorial, guaranteed-valid SVG graphic directly in Python.
@@ -1173,37 +1192,42 @@ STRICT XML FORMAT:
 STYLE_SUFFIX = STYLE_CONFIGS["comic"]["diffusion_suffix"]
 GROUNDING_THRESHOLD = 1.0
 
-LINKEDIN_CLIENT_ID = os.environ["LINKEDIN_CLIENT_ID"]
-LINKEDIN_CLIENT_SECRET = os.environ["LINKEDIN_CLIENT_SECRET"]
-LINKEDIN_REDIRECT_URI = "http://localhost:8000/auth/linkedin/callback"
+LINKEDIN_CLIENT_ID = os.environ.get("LINKEDIN_CLIENT_ID", "")
+LINKEDIN_CLIENT_SECRET = os.environ.get("LINKEDIN_CLIENT_SECRET", "")
+LINKEDIN_REDIRECT_URI = os.environ.get("LINKEDIN_REDIRECT_URI", "http://localhost:8000/auth/linkedin/callback")
 
 # Temporary in-memory storage for the demo — good enough for a single-user project,
 # not meant to scale to multiple real users.
 LINKEDIN_SESSION_FILE = "data/linkedin_session.json"
+linkedin_session_lock = threading.Lock()
 
 def load_linkedin_session():
-    if os.path.exists(LINKEDIN_SESSION_FILE):
-        try:
-            with open(LINKEDIN_SESSION_FILE, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
+    with linkedin_session_lock:
+        if os.path.exists(LINKEDIN_SESSION_FILE):
+            try:
+                with open(LINKEDIN_SESSION_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
     return {"access_token": None, "person_urn": None, "name": None}
 
 def save_linkedin_session(data):
-    try:
-        os.makedirs("data", exist_ok=True)
-        with open(LINKEDIN_SESSION_FILE, "w") as f:
-            json.dump(data, f)
-    except Exception as e:
-        print(f"Error persisting linkedin session: {e}", flush=True)
+    """Thread-safe atomic write to prevent corrupted JSON on concurrent writes"""
+    with linkedin_session_lock:
+        try:
+            os.makedirs("data", exist_ok=True)
+            tmp_file = f"{LINKEDIN_SESSION_FILE}.tmp"
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            os.replace(tmp_file, LINKEDIN_SESSION_FILE)
+        except Exception as e:
+            print(f"Error persisting linkedin session: {e}", flush=True)
 
 linkedin_session = load_linkedin_session()
 
 
 class TopicRequest(BaseModel):
     topic: str
-    audience: Optional[str] = "college"
     style: Optional[str] = "comic" 
 
 
@@ -1214,6 +1238,17 @@ def read_root():
 
 @app.get("/auth/linkedin/login")
 def linkedin_login():
+    if not LINKEDIN_CLIENT_ID or not LINKEDIN_CLIENT_SECRET:
+        return HTMLResponse("""
+            <html><body style="font-family: system-ui, sans-serif; text-align: center; padding-top: 50px; background: #0F1117; color: #F2F1ED;">
+            <div style="max-width: 420px; margin: auto; padding: 24px; border: 1px solid #262930; border-radius: 12px; background: #15171A;">
+                <h3 style="color: #E8A33D; margin-top: 0;">LinkedIn Integration Not Configured</h3>
+                <p style="color: #8B8D93; font-size: 14px; line-height: 1.5;">LINKEDIN_CLIENT_ID or LINKEDIN_CLIENT_SECRET is missing from your .env environment file. Please configure your LinkedIn developer app keys to enable direct publishing.</p>
+                <button onclick="window.close()" style="background: #262930; color: #F2F1ED; border: 1px solid #3E434D; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 12px;">Close Window</button>
+            </div>
+            </body></html>
+        """, status_code=200)
+
     params = {
         "response_type": "code",
         "client_id": LINKEDIN_CLIENT_ID,
@@ -1267,13 +1302,15 @@ async def linkedin_callback(code: str):
 
 @app.get("/auth/linkedin/status")
 def linkedin_status():
-    if linkedin_session["access_token"]:
-        return {"connected": True, "name": linkedin_session["name"]}
-    return {"connected": False}
+    if not LINKEDIN_CLIENT_ID or not LINKEDIN_CLIENT_SECRET:
+        return {"connected": False, "configured": False}
+    if linkedin_session.get("access_token"):
+        return {"connected": True, "configured": True, "name": linkedin_session.get("name")}
+    return {"connected": False, "configured": True}
 
 
 @app.post("/linkedin/post-panel")
-async def post_panel_to_linkedin(panel_number: int, caption: str):
+async def post_panel_to_linkedin(panel_number: int, caption: str, image_filename: Optional[str] = None):
     print(f"[LinkedIn Post] Initiating post for panel {panel_number}...", flush=True)
     if not linkedin_session["access_token"]:
         print("[LinkedIn Post] Error: Not connected to LinkedIn yet.", flush=True)
@@ -1281,8 +1318,20 @@ async def post_panel_to_linkedin(panel_number: int, caption: str):
 
     access_token = linkedin_session["access_token"]
     person_urn = linkedin_session["person_urn"]
-    image_path = f"data/images/panel_{panel_number}.png"
-    svg_path = f"data/images/panel_{panel_number}.svg"
+
+    if image_filename:
+        clean_name = os.path.basename(image_filename).split("?")[0]
+        base_name = os.path.splitext(clean_name)[0]
+        image_path = f"data/images/{base_name}.png"
+        svg_path = f"data/images/{base_name}.svg"
+    else:
+        image_path = f"data/images/panel_{panel_number}.png"
+        svg_path = f"data/images/panel_{panel_number}.svg"
+
+    # Fallback to standard panel if specific session file not found
+    if not os.path.exists(image_path) and not os.path.exists(svg_path):
+        image_path = f"data/images/panel_{panel_number}.png"
+        svg_path = f"data/images/panel_{panel_number}.svg"
 
     # Auto-rasterize SVG to PNG if PNG doesn't exist
     if not os.path.exists(image_path) and os.path.exists(svg_path):
@@ -1476,27 +1525,21 @@ async def post_carousel_to_linkedin(
 class LinkedInCopyRequest(BaseModel):
     topic: str
     panels: list = []
-    audience: Optional[str] = "college"
 
 @app.post("/generate-linkedin-copy")
 def generate_linkedin_copy(request: LinkedInCopyRequest):
     topic = request.topic
-    audience = (request.audience or "college").lower().strip()
-    audience_cfg = AUDIENCE_CONFIGS.get(audience, AUDIENCE_CONFIGS["college"])
     panel_texts = "\n".join([f"Step {p.get('panel_number', i+1)}: {p.get('caption', '')}" for i, p in enumerate(request.panels)])
     
     prompt = f"""You are a top-tier educational LinkedIn creator.
 Write a high-converting, viral LinkedIn post hook, key takeaways, and call-to-action for an illustrated carousel about:
 TOPIC: {topic}
 
-VOICE AND AUDIENCE: {audience_cfg['name']}
-{audience_cfg['linkedin_prompt']}
-
 PANEL STEPS:
 {panel_texts}
 
 REQUIREMENTS:
-1. Hook: Engaging 1-2 sentence opening hook aligned with the {audience_cfg['name']} tone that stops the scroll.
+1. Hook: Engaging 1-2 sentence opening hook that stops the scroll.
 2. Bullets: 3 concise, punchy bullet points summarizing the 3 steps with an emoji each.
 3. CTA: Friendly call to action telling the reader to swipe through the carousel PDF and save the post.
 4. Hashtags: 4-5 relevant industry/topic hashtags (including #ExplainIT).
@@ -1541,7 +1584,6 @@ class PanelQuestionRequest(BaseModel):
     panel_caption: str
     question: str
     conversation_history: Optional[List[Dict[str, str]]] = []
-    audience: Optional[str] = "college"
     style: Optional[str] = "comic"
 
 
@@ -1551,8 +1593,6 @@ def ask_panel(request: PanelQuestionRequest):
     panel_number = request.panel_number
     panel_caption = request.panel_caption.strip()
     question = request.question.strip()
-    audience = (request.audience or "college").lower().strip()
-    audience_cfg = AUDIENCE_CONFIGS.get(audience, AUDIENCE_CONFIGS["college"])
 
     # Attempt to retrieve grounded context from FAISS vector database if present
     grounded_context = ""
@@ -1583,15 +1623,12 @@ def ask_panel(request: PanelQuestionRequest):
 The learner is inspecting Step {panel_number} of a 3-part visual explainer on "{topic}".
 CURRENT STEP {panel_number}: "{panel_caption}"
 
-AUDIENCE DEPTH: {audience_cfg['name']}
-{audience_cfg['tone_prompt']}
-
 {formatted_history}{source_knowledge_text}LEARNER QUESTION:
 "{question}"
 
 TUTOR GUIDELINES:
 1. Specifically anchor your answer in Step {panel_number}: explain what is physically, algorithmically, or historically occurring at this exact stage and why it matters.
-2. Tone & Vocabulary: Strictly match the {audience_cfg['name']} audience level (ELI5 uses everyday metaphors; College uses clear mechanics; Senior Pro uses rigorous terminology, math, and system tradeoffs).
+2. Tone & Vocabulary: Explain with crystal clarity, intuitive everyday metaphors, and clear mechanics that curious learners and professionals can easily grasp.
 3. Formatting:
    - Provide a direct, compelling response in 2-3 concise paragraphs.
    - Use bold highlights for core mechanisms or terms.
@@ -1613,12 +1650,22 @@ Return ONLY a valid JSON object with no markdown code fences and no extra text:
         raw = response.content
         if isinstance(raw, list):
             raw = "".join([b["text"] for b in raw if isinstance(b, dict) and b.get("type") == "text"])
-        cleaned = str(raw).strip().strip("```json").strip("```").strip()
+        cleaned = str(raw).strip()
+        if "```json" in cleaned:
+            cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+        elif "```" in cleaned:
+            cleaned = cleaned.split("```")[1].split("```")[0].strip()
+        
         data = json.loads(cleaned)
+        followups = data.get("suggested_followups") or data.get("followups") or [
+            f"Can you give me an everyday real-world example of this?",
+            f"What is the most common misconception about this step?",
+            f"How does this mechanism connect to the final outcome?"
+        ]
         return {
             "success": True,
             "answer": data.get("answer", "").strip(),
-            "suggested_followups": data.get("suggested_followups", [])
+            "suggested_followups": followups
         }
     except Exception as e:
         print(f"[AskPanel] Fallback triggered: {e}", flush=True)
@@ -1633,16 +1680,22 @@ Return ONLY a valid JSON object with no markdown code fences and no extra text:
         }
 
 
+MAX_UPLOAD_SIZE = 15 * 1024 * 1024  # 15MB maximum safety boundary
+
 @app.post("/upload-source")
 async def upload_source(file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".txt", ".pdf")):
         return {"success": False, "message": "Only .txt and .pdf files are supported."}
 
     file_bytes = await file.read()
+    if len(file_bytes) > MAX_UPLOAD_SIZE:
+        return {"success": False, "message": "File exceeds maximum size limit (15MB). Please upload a smaller document."}
 
     try:
-        text = extract_text_from_file(file.filename, file_bytes)
-        num_chunks = build_vector_store(text, embeddings)
+        # Offload synchronous CPU-heavy text extraction and FAISS MiniLM embeddings computation
+        # to worker thread pool, preventing event-loop freezing.
+        text = await asyncio.to_thread(extract_text_from_file, file.filename, file_bytes)
+        num_chunks = await asyncio.to_thread(build_vector_store, text, embeddings)
     except ValueError as e:
         return {"success": False, "message": str(e)}
     except Exception as e:
@@ -1657,7 +1710,46 @@ async def upload_source(file: UploadFile = File(...)):
 
 
 
-TOPIC_GROUNDING_CACHE: Dict[str, Dict[str, Any]] = {}
+
+class GroundingLRUCache:
+    """
+    Thread-safe Least Recently Used (LRU) Cache with capacity limit and TTL expiration.
+    Eliminates unbounded memory leaks while maintaining high-speed cache hits.
+    """
+    def __init__(self, capacity: int = 250, ttl_seconds: int = 86400):
+        self.capacity = capacity
+        self.ttl = ttl_seconds
+        self._cache = OrderedDict()
+        self._lock = threading.Lock()
+
+    def get(self, key: str) -> Optional[Dict[str, Any]]:
+        with self._lock:
+            if key not in self._cache:
+                return None
+            data, timestamp = self._cache[key]
+            if time.time() - timestamp > self.ttl:
+                del self._cache[key]
+                return None
+            self._cache.move_to_end(key)
+            return data
+
+    def set(self, key: str, value: Dict[str, Any]):
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+            self._cache[key] = (value, time.time())
+            while len(self._cache) > self.capacity:
+                self._cache.popitem(last=False)
+
+    def __contains__(self, key: str) -> bool:
+        return self.get(key) is not None
+
+    def size(self) -> int:
+        with self._lock:
+            return len(self._cache)
+
+TOPIC_GROUNDING_CACHE = GroundingLRUCache(capacity=250, ttl_seconds=86400)
+
 
 def fetch_universal_grounding(topic: str) -> Dict[str, Any]:
     """
@@ -1669,8 +1761,9 @@ def fetch_universal_grounding(topic: str) -> Dict[str, Any]:
     """
     clean_topic = topic.strip()
     cache_key = clean_topic.lower()
-    if cache_key in TOPIC_GROUNDING_CACHE:
-        return TOPIC_GROUNDING_CACHE[cache_key]
+    cached = TOPIC_GROUNDING_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
 
     # Step 1: Check local FAISS index if present
     try:
@@ -1686,7 +1779,7 @@ def fetch_universal_grounding(topic: str) -> Dict[str, Any]:
                     "source_type": "local_document",
                     "citation_label": "Verified Local Source"
                 }
-                TOPIC_GROUNDING_CACHE[cache_key] = res
+                TOPIC_GROUNDING_CACHE.set(cache_key, res)
                 return res
     except Exception as e:
         print(f"[Universal Grounding] Local FAISS index check skipped: {e}", flush=True)
@@ -1725,7 +1818,7 @@ def fetch_universal_grounding(topic: str) -> Dict[str, Any]:
                             "citation_label": f"Wikipedia — {page_title}"
                         }
                         print(f"[Universal Grounding] Successfully grounded '{clean_topic}' via {page_title} ({len(extract_text)} chars).", flush=True)
-                        TOPIC_GROUNDING_CACHE[cache_key] = res
+                        TOPIC_GROUNDING_CACHE.set(cache_key, res)
                         return res
     except Exception as e:
         print(f"[Universal Grounding] Live Wikipedia query error: {e}", flush=True)
@@ -1748,7 +1841,7 @@ Write 3 concise factual paragraphs explaining what it is, how it operates mechan
             "source_type": "scientific_synthesis",
             "citation_label": f"Encyclopedic Reference — {clean_topic}"
         }
-        TOPIC_GROUNDING_CACHE[cache_key] = res
+        TOPIC_GROUNDING_CACHE.set(cache_key, res)
         return res
     except Exception as e:
         print(f"[Universal Grounding] Baseline synthesis fallback: {e}", flush=True)
@@ -1759,20 +1852,16 @@ Write 3 concise factual paragraphs explaining what it is, how it operates mechan
             "source_type": "fallback",
             "citation_label": f"Verified Topic: {clean_topic}"
         }
-        TOPIC_GROUNDING_CACHE[cache_key] = fallback_res
+        TOPIC_GROUNDING_CACHE.set(cache_key, fallback_res)
         return fallback_res
 
 @app.post("/generate")
 def generate_comic(request: TopicRequest):
     topic = request.topic
-    audience = (request.audience or "college").lower().strip()
-    if audience not in AUDIENCE_CONFIGS:
-        audience = "college"
     style = (request.style or "comic").lower().strip()
     if style not in STYLE_CONFIGS:
         style = "comic"
 
-    audience_cfg = AUDIENCE_CONFIGS[audience]
     style_cfg = STYLE_CONFIGS[style]
 
     # Universal Grounding: Fetches local notes or live encyclopedic sources
@@ -1781,9 +1870,6 @@ def generate_comic(request: TopicRequest):
 
     prompt = f"""You are an expert educational infographic and visual storyteller.
 Your mission is to generate a 3-panel visual explainer script for the topic: \"{topic}\".
-
-AUDIENCE DEPTH GUIDANCE:
-{audience_cfg['tone_prompt']}
 
 AESTHETIC STYLE: {style_cfg['name']}
 
@@ -1795,12 +1881,11 @@ TOPIC TO EXPLAIN:
 
 PANEL SCRIPT REQUIREMENTS:
 1. Strict Grounding: Use ONLY facts directly supported by the context above.
-2. Audience Depth Adherence: The captions must strictly embody the {audience_cfg['name']} guidelines above.
-3. Narrative Progression:
+2. Narrative Progression:
    - Panel 1: The Core Concept & Input (What is the starting point or problem?)
    - Panel 2: The Core Mechanism & Action (How does it work step-by-step?)
    - Panel 3: The Result & Grounded Output (What is the final accurate outcome?)
-4. Caption: Clear, engaging, natural human explanation fitting {audience_cfg['name']} (1-2 sentences).
+3. Caption: Clear, engaging, natural human explanation with intuitive metaphors and clear mechanics (1-2 sentences).
 
 CRITICAL IMAGE PROMPT RULES:
 The image prompt is sent to a text-to-image diffusion model. Diffusion models cannot draw abstract buzzwords (like 'embeddings similarity', 'latent vectors', 'data points'). When given abstract phrases, they hallucinate generic neon hallways, random futuristic tunnels, or robots.
@@ -1848,38 +1933,45 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
         script = json.loads(cleaned)
 
     os.makedirs("data/images", exist_ok=True)
+    cleanup_old_images("data/images")
+    gen_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
+
     def process_panel(panel):
         panel_num = panel.get("panel_number", 1)
         caption = panel.get("caption", "")
         cache_buster = int(time.time() * 1000)
-        svg_path = f"data/images/panel_{panel_num}.svg"
-        png_path = f"data/images/panel_{panel_num}.png"
-
-        # Remove stale png files from legacy diffusion runs so only the clean SVG is used
-        if os.path.exists(png_path):
-            try:
-                os.remove(png_path)
-            except Exception:
-                pass
+        svg_filename = f"{gen_id}_panel_{panel_num}.svg"
+        png_filename = f"{gen_id}_panel_{panel_num}.png"
+        svg_path = f"data/images/{svg_filename}"
+        png_path = f"data/images/{png_filename}"
+        latest_svg = f"data/images/panel_{panel_num}.svg"
+        latest_png = f"data/images/panel_{panel_num}.png"
 
         try:
-            print(f"[Generate] Synthesizing cohesive vector infographic for panel {panel_num} in '{style}' style...", flush=True)
-            if generate_topic_svg(topic, panel_num, caption, svg_path, style=style):
-                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+            print(f"[Generate] Synthesizing cohesive vector infographic for panel {panel_num} (session: {gen_id})...", flush=True)
+            if generate_topic_svg(topic, panel_num, caption, svg_path, style="comic"):
                 convert_svg_to_png(svg_path, png_path)
             else:
-                fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
+                fallback_svg = build_fallback_svg(topic, panel_num, caption, style="comic")
                 with open(svg_path, "w", encoding="utf-8") as f:
                     f.write(fallback_svg)
-                panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
                 convert_svg_to_png(svg_path, png_path)
         except Exception as e:
             print(f"[Generate] Emergency fallback in process_panel for panel {panel_num}: {e}", flush=True)
-            fallback_svg = build_fallback_svg(topic, panel_num, caption, style=style)
+            fallback_svg = build_fallback_svg(topic, panel_num, caption, style="comic")
             with open(svg_path, "w", encoding="utf-8") as f:
                 f.write(fallback_svg)
             convert_svg_to_png(svg_path, png_path)
-            panel["image_url"] = f"http://localhost:8000/images/panel_{panel_num}.svg?t={cache_buster}"
+
+        # Mirror to latest pointer for backwards compatibility
+        try:
+            shutil.copyfile(svg_path, latest_svg)
+            if os.path.exists(png_path):
+                shutil.copyfile(png_path, latest_png)
+        except Exception:
+            pass
+
+        panel["image_url"] = f"http://localhost:8000/images/{svg_filename}?t={cache_buster}"
         return panel
 
     print(f"[Generate] Generating visuals for {len(script['panels'])} panels in parallel...", flush=True)
@@ -1893,7 +1985,6 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
     print(f"[Generate] All {len(script['panels'])} panels generated successfully!", flush=True)
     script["grounded"] = True
-    script["audience"] = audience
     script["style"] = style
     script["source_citation"] = {
         "title": grounding_data.get("source_title", "Verified Knowledge Base"),
@@ -1906,13 +1997,10 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
 class QuizRequest(BaseModel):
     topic: str
-    audience: Optional[str] = "college"
 
 @app.post("/generate-quiz")
 def generate_quiz(request: QuizRequest):
     topic = request.topic
-    audience = (request.audience or "college").lower().strip()
-    audience_cfg = AUDIENCE_CONFIGS.get(audience, AUDIENCE_CONFIGS["college"])
 
     # Universal Grounding: Uses cached or live encyclopedic facts
     grounding_data = fetch_universal_grounding(topic)
@@ -1921,8 +2009,7 @@ def generate_quiz(request: QuizRequest):
     prompt = f"""You are an expert educator. Create a 3-question multiple-choice quiz about \"{topic}\" based ONLY on this context:
 {grounded_context}
 
-AUDIENCE LEVEL: {audience_cfg['name']}
-{audience_cfg['quiz_prompt']}
+Create balanced questions testing conceptual comprehension, core mechanics, and key principles.
 
 Return ONLY valid JSON in this exact format:
 {{
@@ -1958,5 +2045,4 @@ Return ONLY valid JSON in this exact format:
         except json.JSONDecodeError:
             raise HTTPException(status_code=500, detail="Failed to parse quiz JSON from LLM.")
 
-    quiz_data["audience"] = audience
     return quiz_data

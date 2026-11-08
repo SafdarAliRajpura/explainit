@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { API_ENDPOINTS } from '../config/api';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Lightweight, safe formatting helper for markdown-like AI responses
@@ -114,8 +115,6 @@ export default function PanelTutorDrawer({
   topic,
   currentPanel,
   totalPanels = 3,
-  audience = 'college',
-  style = 'comic',
   sourceCitation,
 }) {
   const panelNum = currentPanel?.panel_number || 1;
@@ -126,41 +125,37 @@ export default function PanelTutorDrawer({
   const [panelChatHistory, setPanelChatHistory] = useState({});
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showPanelPreview, setShowPanelPreview] = useState(true);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Active messages for current panel
-  const messages = panelChatHistory[panelNum] || [];
-
-  // Initialize initial welcoming greeting if empty for this panel
-  useEffect(() => {
-    if (!panelChatHistory[panelNum] || panelChatHistory[panelNum].length === 0) {
-      const welcomeMsg = {
-        id: `welcome-${panelNum}`,
-        role: 'assistant',
-        content: `👋 **Welcome! I'm your AI tutor for Step ${panelNum}.**\n\nI'm specifically focused on what's happening right here: *"${panelCaption}"*.\n\nAsk me why this stage is necessary, how it works under the hood, or tap one of the suggested questions below to start!`,
-        suggested_followups: [
-          'Why does this step have to happen here?',
-          'What is a real-world example of this?',
-          'Explain this with a simple analogy'
-        ],
-        timestamp: new Date(),
-      };
-      setPanelChatHistory(prev => ({
-        ...prev,
-        [panelNum]: [welcomeMsg]
-      }));
+  // Active messages for current panel (memoized with default initial greeting)
+  const messages = useMemo(() => {
+    const history = panelChatHistory[panelNum];
+    if (history && history.length > 0) {
+      return history;
     }
-  }, [panelNum, panelCaption]);
+    return [{
+      id: `welcome-${panelNum}`,
+      role: 'assistant',
+      content: `👋 **Welcome! I'm your AI tutor for Step ${panelNum}.**\n\nI'm specifically focused on what's happening right here: *"${panelCaption}"*.\n\nAsk me why this stage is necessary, how it works under the hood, or tap one of the suggested questions below to start!`,
+      suggested_followups: [
+        'Why does this step have to happen here?',
+        'What is a real-world example of this?',
+        'Explain this with a simple analogy'
+      ],
+      timestamp: null,
+    }];
+  }, [panelChatHistory, panelNum, panelCaption]);
+
+
 
   // Auto-scroll on new message
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isLoading, isOpen]);
+  }, [messages.length, isLoading, isOpen]);
 
   // Focus input when opened
   useEffect(() => {
@@ -192,7 +187,7 @@ export default function PanelTutorDrawer({
       id: `user-${Date.now()}`,
       role: 'user',
       content: query,
-      timestamp: new Date(),
+      timestamp: null,
     };
 
     // Update state with user message immediately
@@ -211,7 +206,7 @@ export default function PanelTutorDrawer({
         content: m.content
       }));
 
-      const res = await fetch('http://localhost:8000/ask-panel', {
+      const res = await fetch(API_ENDPOINTS.ASK_PANEL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -220,8 +215,6 @@ export default function PanelTutorDrawer({
           panel_caption: panelCaption,
           question: query,
           conversation_history: historyPayload,
-          audience,
-          style,
         }),
       });
 
@@ -236,7 +229,7 @@ export default function PanelTutorDrawer({
         role: 'assistant',
         content: data.answer || "I've analyzed this step, but couldn't formulate a response. What else would you like to know?",
         suggested_followups: data.suggested_followups || [],
-        timestamp: new Date(),
+        timestamp: null,
       };
 
       setPanelChatHistory(prev => ({
@@ -250,7 +243,7 @@ export default function PanelTutorDrawer({
         role: 'assistant',
         content: `⚠️ **Couldn't reach the AI Tutor:** ${err.message || 'Please check your connection.'}\n\nHere is a quick summary for Step ${panelNum}: **${panelCaption}** establishes the core state before progressing.`,
         suggested_followups: ['Try asking again', 'Give me a simple example'],
-        timestamp: new Date(),
+        timestamp: null,
       };
       setPanelChatHistory(prev => ({
         ...prev,
@@ -273,7 +266,7 @@ export default function PanelTutorDrawer({
           'Real-world example',
           'Common misconceptions'
         ],
-        timestamp: new Date(),
+        timestamp: null,
       }]
     }));
   };

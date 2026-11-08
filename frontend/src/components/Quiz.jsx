@@ -1,6 +1,6 @@
+import { API_ENDPOINTS } from '../config/api';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SHOW_PERSONA_STYLE_FEATURE } from '../config/features';
 
 const slideVariants = {
   initial: (dir) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
@@ -15,7 +15,7 @@ function getReactionLine(score, total) {
   return 'Worth another pass through the comic.';
 }
 
-export default function Quiz({ topic, audience = 'college', onBackToComic, onReset }) {
+export default function Quiz({ topic, onBackToComic, onReset }) {
   const [status, setStatus]               = useState('loading');   // 'loading' | 'ready' | 'error'
   const [questions, setQuestions]         = useState([]);
   const [currentIndex, setCurrentIndex]   = useState(0);
@@ -28,26 +28,29 @@ export default function Quiz({ topic, audience = 'college', onBackToComic, onRes
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const res = await fetch('http://localhost:8000/generate-quiz', {
+        const res = await fetch(API_ENDPOINTS.GENERATE_QUIZ, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic, audience }),
+          body: JSON.stringify({ topic }),
         });
         if (!res.ok) throw new Error('Bad response');
         const data = await res.json();
-        setQuestions(data.questions || []);
+        if (!data.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
+          throw new Error('No questions generated');
+        }
+        setQuestions(data.questions);
         setStatus('ready');
       } catch {
         setStatus('error');
       }
     };
     fetchQuiz();
-  }, [topic, audience]);
+  }, [topic]);
 
   const currentQ = questions[currentIndex];
 
   const handleSelect = (idx) => {
-    if (answered) return;
+    if (answered || !currentQ) return;
     setSelectedAnswer(idx);
     setAnswered(true);
     if (idx === currentQ.correct_index) {
@@ -135,7 +138,12 @@ export default function Quiz({ topic, audience = 'college', onBackToComic, onRes
             ← Back to comic
           </motion.button>
           <motion.button
-            onClick={onReset}
+            onClick={() => {
+              if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+              }
+              onReset();
+            }}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             className="group relative flex items-center justify-center gap-2.5 px-7 py-3 border border-border-dark bg-surface text-text-muted rounded-xl text-sm font-medium tracking-wide overflow-hidden hover:border-accent/40 hover:shadow-[0_0_15px_rgba(232,163,61,0.15)] transition-all duration-300 cursor-pointer"
           >
@@ -145,6 +153,39 @@ export default function Quiz({ topic, audience = 'college', onBackToComic, onRes
             </svg>
             <span className="relative z-10 group-hover:text-text-primary transition-colors duration-300">Explain another topic</span>
           </motion.button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ── EMPTY / GUARD CHECK (M-07) ──────────────────────────────────────────────
+  if (!currentQ || questions.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-2xl mx-auto flex flex-col items-center gap-6 py-24"
+      >
+        <p className="text-text-muted font-light text-lg">
+          No quiz questions available for this topic.
+        </p>
+        <div className="flex gap-4">
+          <button
+            onClick={onBackToComic}
+            className="text-sm text-text-muted hover:text-text-primary underline transition-colors cursor-pointer"
+          >
+            ← Back to comic
+          </button>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+              }
+              onReset();
+            }}
+            className="text-sm text-accent hover:underline transition-colors cursor-pointer"
+          >
+            Explain another topic
+          </button>
         </div>
       </motion.div>
     );
@@ -196,11 +237,6 @@ export default function Quiz({ topic, audience = 'college', onBackToComic, onRes
             <p className="text-accent text-xs tracking-[0.2em] uppercase font-semibold">
               Question {currentIndex + 1} of {questions.length}
             </p>
-            {SHOW_PERSONA_STYLE_FEATURE && (
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full border border-border-dark bg-surface text-text-muted font-medium">
-              {audience === 'eli5' ? '🧒 ELI5 Quiz' : audience === 'pro' ? '🚀 Senior Pro Quiz' : '🎓 College Quiz'}
-            </span>
-            )}
           </div>
 
           {/* Question */}

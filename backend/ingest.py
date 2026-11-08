@@ -16,7 +16,13 @@ def extract_text_from_file(filename: str, file_bytes: bytes) -> str:
                 text += page_text + "\n\n"
         return text.strip()
     elif filename.lower().endswith(".txt"):
-        return file_bytes.decode("utf-8").strip()
+        try:
+            return file_bytes.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            try:
+                return file_bytes.decode("latin-1").strip()
+            except Exception:
+                return file_bytes.decode("utf-8", errors="replace").strip()
     else:
         raise ValueError(f"Unsupported file type: {filename}. Only .txt and .pdf are allowed.")
 
