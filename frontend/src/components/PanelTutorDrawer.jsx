@@ -1,3 +1,4 @@
+import { useLanguage } from '../hooks/useLanguage';
 import { API_ENDPOINTS } from '../config/api';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -117,6 +118,7 @@ export default function PanelTutorDrawer({
   totalPanels = 3,
   sourceCitation,
 }) {
+  const { activeLang, t } = useLanguage();
   const panelNum = currentPanel?.panel_number || 1;
   const panelCaption = currentPanel?.caption || '';
   const panelImage = currentPanel?.image_url;
@@ -215,6 +217,8 @@ export default function PanelTutorDrawer({
           panel_caption: panelCaption,
           question: query,
           conversation_history: historyPayload,
+          target_language: activeLang?.name || 'English',
+          target_code: activeLang?.code || 'en',
         }),
       });
 
@@ -304,9 +308,9 @@ export default function PanelTutorDrawer({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-text-primary text-base">Ask AI Tutor</h3>
+                    <h3 className="font-semibold text-text-primary text-base">{t('interactiveStepTutor')}</h3>
                     <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/20 text-accent font-bold border border-accent/40">
-                      Step {panelNum} of {totalPanels}
+                      {t('panelOf', { current: panelNum, total: totalPanels })}
                     </span>
                   </div>
                   <p className="text-xs text-text-muted truncate max-w-[260px] sm:max-w-[320px]">
@@ -331,7 +335,7 @@ export default function PanelTutorDrawer({
                 <button
                   onClick={onClose}
                   className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-[#1A1D24] transition-colors cursor-pointer"
-                  title="Close (Esc)"
+                  title={t('close')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -460,7 +464,7 @@ export default function PanelTutorDrawer({
             {/* ── Suggested Prompts Chips Bar ──────────────────────── */}
             <div className="p-3 border-t border-[#20232A] bg-[#101217]/95">
               <div className="text-[10px] uppercase font-semibold text-text-muted tracking-wider mb-2 px-1">
-                Quick Questions for Step {panelNum}:
+                {t('suggestedInquiries')}:
               </div>
               <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 {DEFAULT_SUGGESTIONS.map((sug, sIdx) => (
@@ -492,7 +496,7 @@ export default function PanelTutorDrawer({
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={`Ask about Step ${panelNum} (e.g. why does this happen?)...`}
+                    placeholder={t('typeQuestionPlaceholder')}
                     disabled={isLoading}
                     className="w-full pl-3.5 pr-4 py-3 rounded-xl bg-[#191D24] border border-[#2A2F3B] focus:border-accent/60 text-text-primary placeholder:text-text-muted/60 text-sm focus:outline-none transition-colors shadow-inner"
                   />
@@ -504,7 +508,7 @@ export default function PanelTutorDrawer({
                   className="h-11 px-4 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed text-charcoal font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm shrink-0"
                   title="Send question"
                 >
-                  <span>Ask</span>
+                  <span>{t('send')}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
                   </svg>

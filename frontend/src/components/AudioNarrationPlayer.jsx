@@ -1,3 +1,4 @@
+import { useLanguage } from '../hooks/useLanguage';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -7,8 +8,10 @@ export default function AudioNarrationPlayer({
   onGoToPanel,
   isSpeaking,
   setIsSpeaking,
-  language = { code: 'en', name: 'English' },
+  language: propLanguage,
 }) {
+  const { activeLang: contextLang, t } = useLanguage();
+  const language = propLanguage || contextLang;
   const [isPaused, setIsPaused] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [autoAdvance, setAutoAdvance] = useState(true);
@@ -269,7 +272,7 @@ export default function AudioNarrationPlayer({
           onClick={handleTogglePlay}
           className="text-xs font-medium cursor-pointer text-text-primary hover:text-accent transition-colors hidden sm:inline-block"
         >
-          {isSpeaking ? (isPaused ? 'Paused' : 'Narrating...') : 'Listen'}
+          {isSpeaking ? (isPaused ? t('paused') : `${t('narrating')}...`) : t('listen')}
         </button>
 
         {/* Compact Speed Dropdown (Saves space) */}
@@ -280,7 +283,7 @@ export default function AudioNarrationPlayer({
               setShowVoiceMenu(false);
             }}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-accent hover:bg-[#262930] cursor-pointer transition-colors"
-            title="Narration speed"
+            title={t('speed')}
           >
             <span>{playbackRate}x</span>
             <svg 
@@ -303,7 +306,7 @@ export default function AudioNarrationPlayer({
                 className="absolute left-1/2 -translate-x-1/2 top-8 z-40 w-24 p-1.5 rounded-xl bg-[#15171A] border border-border-dark shadow-2xl backdrop-blur-md"
               >
                 <div className="text-[9px] uppercase tracking-wider text-text-muted font-bold px-2 py-0.5 border-b border-border-dark/50 mb-1 text-center">
-                  Speed
+                  {t('speed')}
                 </div>
                 <div className="space-y-0.5">
                   {[0.75, 1.0, 1.25, 1.5, 2.0].map((rate) => (
@@ -341,7 +344,7 @@ export default function AudioNarrationPlayer({
           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
           </svg>
-          <span className="hidden md:inline">Reel</span>
+          <span className="hidden md:inline">{t('reel')}</span>
         </button>
 
         {/* Voice Selector Trigger Button */}

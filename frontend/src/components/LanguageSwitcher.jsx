@@ -1,13 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SUPPORTED_LANGUAGES } from '../config/languages';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function LanguageSwitcher({
-  activeLang = SUPPORTED_LANGUAGES[0],
-  onSelectLanguage,
-  isTranslating = false,
+  activeLang: propActiveLang,
+  onSelectLanguage: propOnSelectLanguage,
+  isTranslating: propIsTranslating,
   className = '',
 }) {
+  const context = useLanguage();
+  const activeLang = propActiveLang || context.activeLang;
+  const isTranslating = propIsTranslating !== undefined ? propIsTranslating : context.isTranslating;
+  const onSelectLanguage = propOnSelectLanguage || context.setActiveLang;
+  const t = context.t;
+
   const [showMenu, setShowMenu] = useState(false);
   const containerRef = useRef(null);
 
@@ -45,7 +52,7 @@ export default function LanguageSwitcher({
         {isTranslating ? (
           <>
             <div className="w-3.5 h-3.5 rounded-full border-2 border-text-muted border-t-accent animate-spin" />
-            <span className="text-xs font-medium text-accent">Translating...</span>
+            <span className="text-xs font-medium text-accent">{t('translating')}</span>
           </>
         ) : (
           <>
@@ -75,8 +82,8 @@ export default function LanguageSwitcher({
             className="absolute right-0 top-10 z-50 w-52 p-2 rounded-2xl bg-[#15171A] border border-border-dark shadow-2xl backdrop-blur-md"
           >
             <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold px-2 py-1 border-b border-border-dark/50 mb-1 flex items-center justify-between">
-              <span>Explain In Language</span>
-              <span className="text-[9px] text-accent font-normal">1-Click</span>
+              <span>{t('explainInLanguage')}</span>
+              <span className="text-[9px] text-accent font-normal">{t('clickToSwitch')}</span>
             </div>
             <div className="max-h-60 overflow-y-auto space-y-0.5 custom-scrollbar">
               {SUPPORTED_LANGUAGES.map((lang) => (

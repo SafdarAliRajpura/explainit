@@ -1,3 +1,4 @@
+import { useLanguage } from '../hooks/useLanguage';
 import { API_ENDPOINTS } from '../config/api';
 import { useState, useEffect } from 'react';
 
@@ -28,6 +29,7 @@ export default function ShareStudioModal({
   onDirectPost,
 
 }) {
+  const { activeLang } = useLanguage();
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -97,7 +99,7 @@ export default function ShareStudioModal({
 
           headers: { 'Content-Type': 'application/json' },
 
-          body: JSON.stringify({ topic, panels })
+          body: JSON.stringify({ topic, panels, target_language: activeLang?.name || 'English', target_code: activeLang?.code || 'en' })
 
         });
 
@@ -141,7 +143,7 @@ export default function ShareStudioModal({
 
     fetchLinkedInCopy();
 
-  }, [isOpen, topic, panels]);
+  }, [isOpen, topic, panels, activeLang]);
 
 
 

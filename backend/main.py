@@ -1607,6 +1607,8 @@ class PanelQuestionRequest(BaseModel):
     question: str
     conversation_history: Optional[List[Dict[str, str]]] = []
     style: Optional[str] = "comic"
+    target_language: Optional[str] = "English"
+    target_code: Optional[str] = "en"
 
 
 @app.post("/ask-panel")
@@ -1657,6 +1659,7 @@ TUTOR GUIDELINES:
    - Include a concrete everyday or industry application ("🔍 In Action:" or "💡 Intuition:").
    - Highlight any common pitfall or misconception if relevant.
 4. Suggest 2 to 3 short, curiosity-sparking follow-up questions tailored to this specific step that the user might want to click next.
+{f"5. IMPORTANT: Write your entire answer and all follow-up questions in {request.target_language} (language code: {request.target_code})." if request.target_language and request.target_language.lower() != "english" else ""}
 
 Return ONLY a valid JSON object with no markdown code fences and no extra text:
 {{

@@ -2,7 +2,7 @@ import { API_ENDPOINTS } from '../config/api';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSwitcher from './LanguageSwitcher';
-import { SUPPORTED_LANGUAGES } from '../config/languages';
+import { useLanguage } from '../hooks/useLanguage';
 
 const slideVariants = {
   initial: (dir) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
@@ -183,12 +183,17 @@ function getReactionLine(score, total, langCode) {
 
 export default function Quiz({
   topic,
-  activeLang = SUPPORTED_LANGUAGES[0],
-  onSelectLanguage,
-  isTranslating = false,
+  activeLang: propActiveLang,
+  onSelectLanguage: propOnSelectLanguage,
+  isTranslating: propIsTranslating,
   onBackToComic,
   onReset
 }) {
+  const context = useLanguage();
+  const activeLang = propActiveLang || context.activeLang;
+  const onSelectLanguage = propOnSelectLanguage || context.setActiveLang;
+  const isTranslating = propIsTranslating !== undefined ? propIsTranslating : context.isTranslating;
+
   const [status, setStatus]               = useState('loading');   // 'loading' | 'ready' | 'error'
   const [questions, setQuestions]         = useState([]);
   const [currentIndex, setCurrentIndex]   = useState(0);

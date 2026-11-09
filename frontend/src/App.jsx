@@ -1,9 +1,12 @@
-import Hero from './components/Hero'
+import Hero from './components/Hero';
+import { LanguageProvider } from './context/LanguageContext';
 
 function App() {
   return (
-    <Hero />
-  )
+    <LanguageProvider>
+      <Hero />
+    </LanguageProvider>
+  );
 }
 
-export default App
+export default App;

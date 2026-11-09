@@ -1,3 +1,5 @@
+import { useLanguage } from '../hooks/useLanguage';
+import LanguageSwitcher from './LanguageSwitcher';
 import { useState, useEffect } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,6 +35,7 @@ const TRENDING_TOPICS = [
 ];
 
 export default function Hero() {
+  const { t } = useLanguage();
 
   const [topic, setTopic] = useState('');
 
@@ -253,7 +256,7 @@ export default function Hero() {
 
       >
 
-        Input a topic, get an illustrated comic, backed by real facts.
+        {t('heroTitle1')} <span className="italic text-accent">{t('heroTitleHighlight')}</span>
 
       </motion.h2>
 
@@ -267,7 +270,7 @@ export default function Hero() {
 
       >
 
-        Every fact is traceable to real source material.
+        {t('heroSubtitle')}
 
       </motion.p>
 
@@ -297,7 +300,7 @@ export default function Hero() {
 
             }}
 
-            placeholder="Try: How GANs work"
+            placeholder={t('inputPlaceholder')}
 
             className="flex-1 bg-surface text-text-primary placeholder-text-muted border border-border-dark rounded-xl px-6 py-4 text-lg focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent focus:shadow-[0_0_15px_rgba(232,163,61,0.2)] transition-all"
 
@@ -326,7 +329,7 @@ export default function Hero() {
           <div className="flex items-center gap-1.5 text-xs text-text-muted">
             <span className="text-accent text-xs">✨</span>
             <span className="text-[11px] uppercase tracking-wider font-semibold text-text-muted/80">
-              Trending Topics:
+              {t('trending')}:
             </span>
           </div>
           <div className="flex flex-wrap justify-center gap-2 max-w-xl">
@@ -749,9 +752,11 @@ export default function Hero() {
 
       {/* Top Bar */}
 
-      <header className="w-full max-w-7xl mx-auto px-4 py-8">
+      <header className="w-full max-w-7xl mx-auto px-4 py-8 flex justify-between items-center">
 
         <h1 className="font-fraunces text-2xl font-medium tracking-wide">ExplainIT</h1>
+
+        {status !== 'success' && <LanguageSwitcher />}
 
       </header>
 

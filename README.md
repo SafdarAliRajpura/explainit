@@ -42,10 +42,10 @@
 - **Voice Synthesis:** Web Speech API integration with native voice detection, custom playback rate (0.75x–2.0x), and auto-advance.
 - **Zero Background Leak:** Automatically terminates speech synthesis on panel navigation, reset, or quiz transition.
 
-### 6. 🌍 1-Click Multi-Language Switcher (Explain in Any Language)
-- **Unified Global Experience:** Switch both the visual comic and the "Test Yourself" quiz into Spanish, French, German, Hindi, Urdu, Arabic, Japanese, Chinese, or Portuguese in one click.
-- **Native Voice Narration:** Web Speech synthesis automatically filters native OS voices matching the active language code, delivering natural pronunciation and accents.
-- **In-Memory Zero-Latency Cache:** Instantaneous (0ms) re-switching across languages without redundant API calls.
+### 6. 🌍 Full-System Multi-Language Engine (Explain in Any Language)
+- **100% System-Wide Internationalization:** Changing the language instantly transforms every piece of text across the entire platform — navigation bar, verified source indicators, panel badges, buttons, AI Tutor drawer greetings, suggested follow-ups, and the retention quiz into Spanish, French, German, Hindi, Urdu, Arabic, Japanese, Chinese, or Portuguese.
+- **Native Accent Audio Narration:** Web Speech synthesis automatically filters native OS voices matching the active language code, delivering natural pronunciation and accents.
+- **In-Memory Zero-Latency Cache:** Instantaneous (0ms) re-switching across languages with persistent language preference via `localStorage`.
 
 ### 7. 💼 LinkedIn Carousel & Share Studio
 - **5-Slide PDF Document Carousel:** 1-Click export of 4:5 aspect-ratio carousels optimized for LinkedIn document swiping.

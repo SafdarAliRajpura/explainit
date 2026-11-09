@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AudioNarrationPlayer from './AudioNarrationPlayer';
 import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '../hooks/useLanguage';
 
 // Code-split heavy sub-views to slash initial bundle size by 70%
 const Quiz = lazy(() => import('./Quiz'));
 const ShareStudioModal = lazy(() => import('./ShareStudioModal'));
 const PanelTutorDrawer = lazy(() => import('./PanelTutorDrawer'));
 import { API_ENDPOINTS } from '../config/api';
-import { SUPPORTED_LANGUAGES } from '../config/languages';
 
 
 const ChevronLeft = () => (
@@ -32,72 +32,79 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
   const [showShareStudio, setShowShareStudio] = useState(false);
   const [showTutorDrawer, setShowTutorDrawer] = useState(false);
 
-  // 🌍 1-Click Language Switcher state
-  const [activeLang, setActiveLang] = useState(SUPPORTED_LANGUAGES[0]);
+  // 🌍 Global Language Context integration
+  const { activeLang, setActiveLang, isTranslating, setIsTranslating, t } = useLanguage();
   const [translations, setTranslations] = useState({}); // in-memory cache: { [code]: translatedPanels }
-  const [isTranslating, setIsTranslating] = useState(false);
 
-  const handleSelectLanguage = async (lang) => {
-    if (lang.code === activeLang.code) return;
+  // Automatically fetch comic translation when active language changes
+  useEffect(() => {
+    if (!panels || panels.length === 0) return;
+    if (activeLang.code === 'en') return;
+    if (translations[activeLang.code]) return;
 
-    if (lang.code === 'en') {
-      setActiveLang(lang);
-      return;
-    }
+    let isCancelled = false;
+    const fetchTranslation = async () => {
+      setIsTranslating(true);
+      try {
+        const response = await fetch(API_ENDPOINTS.TRANSLATE_COMIC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            panels: panels.map((p) => ({
+              panel_number: p.panel_number,
+              caption: p.caption,
+              title: p.title || '',
+            })),
+            target_language: activeLang.name,
+            target_code: activeLang.code,
+          }),
+        });
 
-    // Instant switch if already cached
-    if (translations[lang.code]) {
-      setActiveLang(lang);
-      return;
-    }
+        if (!response.ok) {
+          throw new Error(`Translation failed with status: ${response.status}`);
+        }
 
-    setIsTranslating(true);
-    try {
-      const response = await fetch(API_ENDPOINTS.TRANSLATE_COMIC, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          panels: panels.map((p) => ({
-            panel_number: p.panel_number,
-            caption: p.caption,
-            title: p.title || '',
-          })),
-          target_language: lang.name,
-          target_code: lang.code,
-        }),
-      });
+        const data = await response.json();
+        const translatedMap = {};
+        (data.translated_panels || []).forEach((tp) => {
+          translatedMap[tp.panel_number] = tp;
+        });
 
-      if (!response.ok) {
-        throw new Error(`Translation failed with status: ${response.status}`);
+        const mergedPanels = panels.map((original) => {
+          const tr = translatedMap[original.panel_number];
+          return tr
+            ? {
+                ...original,
+                caption: tr.caption || original.caption,
+                title: tr.title || original.title,
+              }
+            : original;
+        });
+
+        if (!isCancelled) {
+          setTranslations((prev) => ({
+            ...prev,
+            [activeLang.code]: mergedPanels,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to translate comic panels:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsTranslating(false);
+        }
       }
+    };
 
-      const data = await response.json();
-      const translatedMap = {};
-      (data.translated_panels || []).forEach((tp) => {
-        translatedMap[tp.panel_number] = tp;
-      });
+    fetchTranslation();
 
-      const mergedPanels = panels.map((original) => {
-        const tr = translatedMap[original.panel_number];
-        return tr
-          ? {
-              ...original,
-              caption: tr.caption || original.caption,
-              title: tr.title || original.title,
-            }
-          : original;
-      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeLang.code, activeLang.name, panels, setIsTranslating, translations]);
 
-      setTranslations((prev) => ({
-        ...prev,
-        [lang.code]: mergedPanels,
-      }));
-      setActiveLang(lang);
-    } catch (err) {
-      console.error('Failed to translate comic panels:', err);
-    } finally {
-      setIsTranslating(false);
-    }
+  const handleSelectLanguage = (lang) => {
+    setActiveLang(lang);
   };
 
   // Derive the active panels for reading and voice narration
@@ -344,10 +351,10 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-50"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-accent shadow-[0_0_8px_rgba(232,163,61,0.8)]"></span>
               </span>
-              <span className="text-[10px] tracking-[0.2em] uppercase text-text-primary font-semibold">Verified Source</span>
+              <span className="text-[10px] tracking-[0.2em] uppercase text-text-primary font-semibold">{t('verifiedSource')}</span>
             </div>
             <span className="text-sm text-text-muted font-light pr-4">
-              Topic: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
+              {t('topic')}: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
             </span>
           </div>
 
@@ -386,7 +393,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-50"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-accent shadow-[0_0_8px_rgba(232,163,61,0.8)]"></span>
               </span>
-              <span className="text-[10px] tracking-[0.2em] uppercase text-text-primary font-semibold">Verified Source</span>
+              <span className="text-[10px] tracking-[0.2em] uppercase text-text-primary font-semibold">{t('verifiedSource')}</span>
             </div>
             {sourceCitation?.url ? (
               <a
@@ -405,7 +412,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
               </a>
             ) : (
               <span className="text-sm text-text-muted font-light pr-4">
-                Topic: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
+                {t('topic')}: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
               </span>
             )}
           </div>
@@ -438,7 +445,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
               <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
             </svg>
-            <span>Carousel Studio</span>
+            <span>{t('carouselStudio')}</span>
           </button>
 
           <div className="h-4 w-[1px] bg-border-dark hidden sm:block" />
@@ -447,7 +454,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
           {linkedinConnected ? (
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.3)]"></span>
-              Connected as {linkedinName}
+              {t('connectedAs')} {linkedinName}
             </div>
           ) : (
             <button 
@@ -457,7 +464,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
               </svg>
-              <span className="hidden sm:inline">Connect LinkedIn</span>
+              <span className="hidden sm:inline">{t('connectLinkedin')}</span>
             </button>
           )}
         </div>
@@ -486,7 +493,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                   <span className="w-1 bg-accent rounded-full animate-pulse h-2.5"></span>
                   <span className="w-1 bg-accent rounded-full animate-pulse h-1.5"></span>
                 </div>
-                <span className="text-[10px] font-semibold tracking-wider text-accent uppercase">Narrating</span>
+                <span className="text-[10px] font-semibold tracking-wider text-accent uppercase">{t('narrating')}</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -517,7 +524,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
                   </svg>
-                  <span>Expand</span>
+                  <span>{t('expand')}</span>
                 </button>
 
                 {/* Ask AI Tutor Pill Button on Image */}
@@ -533,7 +540,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                   title="Ask AI Tutor about this step"
                 >
                   <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  <span>Ask AI</span>
+                  <span>{t('askAi')}</span>
                 </button>
               </motion.div>
             ) : (
@@ -569,7 +576,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
               >
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                   <p className="text-accent text-xs tracking-[0.2em] uppercase font-semibold">
-                    Panel {currentIndex + 1} of {panels.length}
+                    {t('panelOf', { current: currentIndex + 1, total: panels.length })}
                   </p>
                   
                   <div className="flex items-center gap-2.5">
@@ -586,7 +593,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                       title="Open interactive AI tutor for this step"
                     >
                       <span className="text-xs">💬</span>
-                      <span>Deep Dive / Ask AI</span>
+                      <span>{t('deepDiveAskAi')}</span>
                       <span className="text-[10px] text-accent/70 hidden sm:inline group-hover:translate-x-0.5 transition-transform">→</span>
                     </button>
 
@@ -602,11 +609,11 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                       {shareStatuses[currentPanel?.panel_number] === 'success' && (
                         <span className="text-accent font-medium flex items-center gap-1">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                          Posted!
+                          {t('posted')}
                         </span>
                       )}
                       {shareStatuses[currentPanel?.panel_number] === 'error' && (
-                        <span className="text-red-400/80 font-medium">Couldn't post</span>
+                        <span className="text-red-400/80 font-medium">{t('couldntPost')}</span>
                       )}
                       {(!shareStatuses[currentPanel?.panel_number] || shareStatuses[currentPanel?.panel_number] === 'idle') && (
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -672,7 +679,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Test Yourself</span>
+                <span>{t('testYourself')}</span>
               </motion.button>
 
               {/* GHOST — Explain another topic */}
@@ -692,7 +699,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-accent shrink-0 group-hover:rotate-12 transition-transform duration-300">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                 </svg>
-                <span>Another Topic</span>
+                <span>{t('anotherTopic')}</span>
               </motion.button>
             </div>
           </div>
@@ -738,7 +745,7 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
               
               <div className="w-full pt-3 border-t border-[#262930] flex items-center justify-between text-xs text-[#8B8D93]">
                 <span className="tracking-wider uppercase font-semibold text-accent">
-                  Panel {currentIndex + 1} of {panels.length}
+                  {t('panelOf', { current: currentIndex + 1, total: panels.length })}
                 </span>
                 <span className="capitalize text-text-primary font-medium truncate max-w-md">
                   {topic}
