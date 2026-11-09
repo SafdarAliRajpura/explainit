@@ -38,10 +38,15 @@
 - **Visual Feedback & Explanations:** Explains *why* an answer is correct or incorrect with score badges and instant retry actions.
 
 ### 5. 🎙️ Natural Audio Narration Player
-- **Voice Synthesis:** Web Speech API integration with voice picker (Google Natural, Samantha, Daniel), custom playback rate (0.75x–1.5x), and auto-advance.
+- **Voice Synthesis:** Web Speech API integration with native voice detection, custom playback rate (0.75x–2.0x), and auto-advance.
 - **Zero Background Leak:** Automatically terminates speech synthesis on panel navigation, reset, or quiz transition.
 
-### 6. 💼 LinkedIn Carousel & Share Studio
+### 6. 🌍 1-Click Multi-Language Switcher (Explain in Any Language)
+- **Instant Global Translation:** Switch the comic captions into Spanish, French, German, Hindi, Urdu, Arabic, Japanese, Chinese, or Portuguese in one click.
+- **Native Voice Narration:** Web Speech synthesis automatically filters native OS voices matching the active language code, delivering natural pronunciation and accents.
+- **In-Memory Zero-Latency Cache:** Instantaneous (0ms) re-switching across languages without redundant API calls.
+
+### 7. 💼 LinkedIn Carousel & Share Studio
 - **5-Slide PDF Document Carousel:** 1-Click export of 4:5 aspect-ratio carousels optimized for LinkedIn document swiping.
 - **Direct 1-Click Publishing:** OAuth 2.0 integration with persistent credentials to publish individual panels or entire multi-slide carousels directly to your LinkedIn feed.
 - **AI Copywriter:** Generates catchy, hashtag-optimized post copy and thread hooks for your explanation.
@@ -128,7 +133,8 @@ explainit/
 │   │   │   └── ShareStudioModal.jsx # 5-Slide PDF carousel builder & LinkedIn publisher
 │   │   ├── config/
 │   │   │   ├── api.js               # Centralized endpoints & dynamic baseURL config
-│   │   │   └── features.js          # Feature toggles
+│   │   │   ├── features.js          # Feature toggles
+│   │   │   └── languages.js         # Supported world languages & flag metadata
 │   │   ├── App.jsx                  # Main application container
 │   │   └── main.jsx                 # React root DOM mount
 │   ├── package.json                 # Dependencies & scripts
@@ -208,6 +214,7 @@ npm run dev
 | **`/generate`** | `POST` | Generates 3 cohesive grounded panels with session-isolated SVGs & PNGs |
 | **`/upload-source`** | `POST` | Asynchronous non-blocking document upload (`.txt`, `.pdf` up to 15MB) |
 | **`/ask-panel`** | `POST` | Step-grounded Q&A tutor with dynamic follow-up suggestions |
+| **`/translate-comic`** | `POST` | Translates all comic panels into any target language with LLM preservation of technical depth |
 | **`/generate-quiz`** | `POST` | Generates a 3-question grounded retention quiz for the topic |
 | **`/generate-linkedin-copy`** | `POST` | Creates engagement-optimized LinkedIn post text and hashtags |
 | **`/auth/linkedin/status`** | `GET` | Returns connection status and profile details safely without crash |

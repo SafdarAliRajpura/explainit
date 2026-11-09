@@ -7,6 +7,7 @@ export default function AudioNarrationPlayer({
   onGoToPanel,
   isSpeaking,
   setIsSpeaking,
+  language = { code: 'en', name: 'English' },
 }) {
   const [isPaused, setIsPaused] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -32,28 +33,39 @@ export default function AudioNarrationPlayer({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 1. Load system voices and pick best English voice
+  // 1. Load system voices and pick best voice for active language
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
     }
 
+    const langCode = (language?.code || 'en').toLowerCase();
+
     const loadVoices = () => {
       const allVoices = window.speechSynthesis.getVoices();
-      const englishVoices = allVoices.filter(v => v.lang.startsWith('en'));
-      setAvailableVoices(englishVoices.length > 0 ? englishVoices : allVoices);
+      if (!allVoices || allVoices.length === 0) return;
 
-      if (!selectedVoiceName && englishVoices.length > 0) {
-        // Preferred natural-sounding voices in modern OS/browsers
-        const preferred = englishVoices.find(v => 
-          v.name.includes('Google') || 
-          v.name.includes('Natural') || 
-          v.name.includes('Samantha') || 
-          v.name.includes('Daniel') ||
-          v.name.includes('David')
-        );
-        setSelectedVoiceName(preferred ? preferred.name : englishVoices[0].name);
-      }
+      // Filter voices matching the active language code prefix (e.g. 'es', 'fr', 'de', 'hi', etc.)
+      const langVoices = allVoices.filter(v => 
+        v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(langCode)
+      );
+
+      const usableVoices = langVoices.length > 0 ? langVoices : allVoices;
+      setAvailableVoices(usableVoices);
+
+      // Auto-select preferred native or natural-sounding voice
+      const preferred = langVoices.find(v => 
+        v.name.includes('Google') || 
+        v.name.includes('Natural') || 
+        v.name.includes('Neural') || 
+        v.name.includes('Samantha') || 
+        v.name.includes('Daniel') || 
+        v.name.includes('David') ||
+        v.name.includes('Microsoft')
+      );
+
+      const newVoiceName = preferred ? preferred.name : (langVoices[0]?.name || allVoices[0]?.name || '');
+      setSelectedVoiceName(newVoiceName);
     };
 
     loadVoices();
@@ -62,7 +74,7 @@ export default function AudioNarrationPlayer({
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
     };
-  }, [selectedVoiceName]);
+  }, [language?.code]);
 
   // Clean text for optimal speech pronunciation
   const cleanSpeechText = (text) => {
@@ -94,10 +106,15 @@ export default function AudioNarrationPlayer({
 
     utterance.rate = forceRate;
     utterance.pitch = 1.0;
+    utterance.lang = language?.code || 'en';
 
     if (selectedVoiceName) {
-      const voice = availableVoices.find(v => v.name === selectedVoiceName);
-      if (voice) utterance.voice = voice;
+      const voice = availableVoices.find(v => v.name === selectedVoiceName)
+                 || window.speechSynthesis.getVoices().find(v => v.name === selectedVoiceName);
+      if (voice) {
+        utterance.voice = voice;
+        if (voice.lang) utterance.lang = voice.lang;
+      }
     }
 
     utterance.onstart = () => {
@@ -128,13 +145,13 @@ export default function AudioNarrationPlayer({
     window.speechSynthesis.speak(utterance);
   };
 
-  // 3. React to index changes when speaking is active
+  // 3. React to index or language changes when speaking is active
   useEffect(() => {
     if (isSpeaking && !isPaused) {
       playSpeech(currentIndex);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex]);
+  }, [currentIndex, language?.code, panels[currentIndex]?.caption]);
 
   // 4. Cleanup on unmount
   useEffect(() => {

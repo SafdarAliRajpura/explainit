@@ -10,4 +10,5 @@ export const API_ENDPOINTS = {
   LINKEDIN_POST_PANEL: `${API_BASE_URL}/linkedin/post-panel`,
   LINKEDIN_POST_CAROUSEL: `${API_BASE_URL}/linkedin/post-carousel`,
   GENERATE_LINKEDIN_COPY: `${API_BASE_URL}/generate-linkedin-copy`,
+  TRANSLATE_COMIC: `${API_BASE_URL}/translate-comic`,
 };

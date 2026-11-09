@@ -2069,3 +2069,79 @@ Return ONLY valid JSON in this exact format:
             raise HTTPException(status_code=500, detail="Failed to parse quiz JSON from LLM.")
 
     return quiz_data
+
+class TranslatePanelItem(BaseModel):
+    panel_number: int
+    caption: str
+    title: Optional[str] = None
+
+class TranslateComicRequest(BaseModel):
+    panels: List[TranslatePanelItem]
+    target_language: str
+    target_code: str
+
+@app.post("/translate-comic")
+def translate_comic(request: TranslateComicRequest):
+    """
+    Translates comic captions and titles into any target language in a single,
+    lightning-fast LLM invocation while preserving scientific depth and comic tone.
+    """
+    if not request.panels:
+        raise HTTPException(status_code=400, detail="No panels provided for translation.")
+
+    panels_payload = [
+        {"panel_number": p.panel_number, "caption": p.caption, "title": p.title or ""}
+        for p in request.panels
+    ]
+
+    prompt = f"""You are a master polyglot translator and educational science communicator.
+Translate the following comic panels into {request.target_language} (language code: {request.target_code}).
+
+Instructions:
+1. Preserve technical accuracy, scientific clarity, and lively educational storytelling.
+2. Keep sentences punchy, natural, and formatted properly for comic captions.
+3. If technical terms have standard expressions in {request.target_language}, use them; otherwise, provide the recognized term.
+4. Translate all provided panels.
+
+Panels to translate:
+{json.dumps(panels_payload, ensure_ascii=False, indent=2)}
+
+Return ONLY valid JSON in this exact structure:
+{{
+  "translated_panels": [
+    {{
+      "panel_number": 1,
+      "caption": "Translated caption here...",
+      "title": "Translated title here..."
+    }}
+  ]
+}}
+"""
+    try:
+        response = invoke_llm_with_retry(prompt)
+    except Exception as e:
+        print(f"Failed to translate comic after retries: {e}", flush=True)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Translation service temporarily unavailable: {str(e)}"
+        )
+
+    raw_output = response.content
+    if isinstance(raw_output, list):
+        raw_output = "".join(block["text"] for block in raw_output if isinstance(block, dict) and block.get("type") == "text")
+
+    try:
+        data = json.loads(raw_output)
+    except json.JSONDecodeError:
+        cleaned = raw_output.strip().strip("```json").strip("```").strip()
+        try:
+            data = json.loads(cleaned)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Failed to parse translated comic JSON from LLM.")
+
+    return {
+        "target_code": request.target_code,
+        "target_language": request.target_language,
+        "translated_panels": data.get("translated_panels", [])
+    }
+
