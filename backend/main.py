@@ -2020,17 +2020,26 @@ Return ONLY valid JSON with no markdown formatting and no code fences. Exactly t
 
 class QuizRequest(BaseModel):
     topic: str
+    target_language: Optional[str] = "English"
+    target_code: Optional[str] = "en"
 
 @app.post("/generate-quiz")
 def generate_quiz(request: QuizRequest):
     topic = request.topic
+    target_language = request.target_language or "English"
+    target_code = request.target_code or "en"
 
     # Universal Grounding: Uses cached or live encyclopedic facts
     grounding_data = fetch_universal_grounding(topic)
     grounded_context = grounding_data["context"]
 
+    lang_instruction = ""
+    if target_language.lower() != "english":
+        lang_instruction = f"\nIMPORTANT: Write all questions, options, and explanations in {target_language} (language code: {target_code}). Ensure natural phrasing and accurate terminology."
+
     prompt = f"""You are an expert educator. Create a 3-question multiple-choice quiz about \"{topic}\" based ONLY on this context:
 {grounded_context}
+{lang_instruction}
 
 Create balanced questions testing conceptual comprehension, core mechanics, and key principles.
 
@@ -2143,5 +2152,86 @@ Return ONLY valid JSON in this exact structure:
         "target_code": request.target_code,
         "target_language": request.target_language,
         "translated_panels": data.get("translated_panels", [])
+    }
+
+class QuizQuestionItem(BaseModel):
+    question: str
+    options: List[str]
+    correct_index: int
+    explanation: str
+
+class TranslateQuizRequest(BaseModel):
+    questions: List[QuizQuestionItem]
+    target_language: str
+    target_code: str
+
+@app.post("/translate-quiz")
+def translate_quiz(request: TranslateQuizRequest):
+    """
+    Translates quiz questions, multiple-choice options, and explanations into any target language
+    while strictly preserving the options order and correct_index for 100% quiz integrity.
+    """
+    if not request.questions:
+        raise HTTPException(status_code=400, detail="No questions provided for translation.")
+
+    payload = [
+        {
+            "question": q.question,
+            "options": q.options,
+            "correct_index": q.correct_index,
+            "explanation": q.explanation
+        }
+        for q in request.questions
+    ]
+
+    prompt = f"""You are a master polyglot translator and science educator.
+Translate the following multiple-choice quiz questions into {request.target_language} (language code: {request.target_code}).
+
+Instructions:
+1. Preserve scientific depth, clarity, and question rigor.
+2. Keep the EXACT SAME order of options so correct_index remains accurate!
+3. Translate the question, each of the options, and the explanation into {request.target_language}.
+
+Quiz payload:
+{json.dumps(payload, ensure_ascii=False, indent=2)}
+
+Return ONLY valid JSON in this exact structure:
+{{
+  "translated_questions": [
+    {{
+      "question": "Translated question here...",
+      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+      "correct_index": 0,
+      "explanation": "Translated explanation here..."
+    }}
+  ]
+}}
+"""
+    try:
+        response = invoke_llm_with_retry(prompt)
+    except Exception as e:
+        print(f"Failed to translate quiz after retries: {e}", flush=True)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Quiz translation service temporarily unavailable: {str(e)}"
+        )
+
+    raw_output = response.content
+    if isinstance(raw_output, list):
+        raw_output = "".join(block["text"] for block in raw_output if isinstance(block, dict) and block.get("type") == "text")
+
+    try:
+        data = json.loads(raw_output)
+    except json.JSONDecodeError:
+        cleaned = raw_output.strip().strip("```json").strip("```").strip()
+        try:
+            data = json.loads(cleaned)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Failed to parse translated quiz JSON from LLM.")
+
+    return {
+        "target_code": request.target_code,
+        "target_language": request.target_language,
+        "translated_questions": data.get("translated_questions", [])
     }
 

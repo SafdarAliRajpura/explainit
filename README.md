@@ -33,8 +33,9 @@
 - **Context-Aware Deep Dives:** Slide-out drawer on every panel allowing learners to ask *"Why does this step happen?"* or *"Can you give a real-world analogy?"*.
 - **Dynamic Suggested Follow-ups:** Automatically suggests context-specific inquiry questions grounded in the active step's caption and visual diagram.
 
-### 4. 🧠 Grounded 3-Question Knowledge Check
+### 4. 🧠 Grounded 3-Question Knowledge Check (with Multi-Language Switcher)
 - **Post-Comic Quiz:** Tests conceptual retention with 3 dynamically generated multiple-choice questions grounded in the comic's content.
+- **Language Switcher in Quiz:** Learners can switch the quiz language (questions, options, explanations, and localized UI) to Spanish, Hindi, French, German, and more at any point without losing progress or answered questions.
 - **Visual Feedback & Explanations:** Explains *why* an answer is correct or incorrect with score badges and instant retry actions.
 
 ### 5. 🎙️ Natural Audio Narration Player
@@ -42,7 +43,7 @@
 - **Zero Background Leak:** Automatically terminates speech synthesis on panel navigation, reset, or quiz transition.
 
 ### 6. 🌍 1-Click Multi-Language Switcher (Explain in Any Language)
-- **Instant Global Translation:** Switch the comic captions into Spanish, French, German, Hindi, Urdu, Arabic, Japanese, Chinese, or Portuguese in one click.
+- **Unified Global Experience:** Switch both the visual comic and the "Test Yourself" quiz into Spanish, French, German, Hindi, Urdu, Arabic, Japanese, Chinese, or Portuguese in one click.
 - **Native Voice Narration:** Web Speech synthesis automatically filters native OS voices matching the active language code, delivering natural pronunciation and accents.
 - **In-Memory Zero-Latency Cache:** Instantaneous (0ms) re-switching across languages without redundant API calls.
 
@@ -215,6 +216,7 @@ npm run dev
 | **`/upload-source`** | `POST` | Asynchronous non-blocking document upload (`.txt`, `.pdf` up to 15MB) |
 | **`/ask-panel`** | `POST` | Step-grounded Q&A tutor with dynamic follow-up suggestions |
 | **`/translate-comic`** | `POST` | Translates all comic panels into any target language with LLM preservation of technical depth |
+| **`/translate-quiz`** | `POST` | Translates quiz questions, options, and explanations into target language while preserving option indices |
 | **`/generate-quiz`** | `POST` | Generates a 3-question grounded retention quiz for the topic |
 | **`/generate-linkedin-copy`** | `POST` | Creates engagement-optimized LinkedIn post text and hashtags |
 | **`/auth/linkedin/status`** | `GET` | Returns connection status and profile details safely without crash |

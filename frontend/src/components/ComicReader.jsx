@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AudioNarrationPlayer from './AudioNarrationPlayer';
+import LanguageSwitcher from './LanguageSwitcher';
 
 // Code-split heavy sub-views to slash initial bundle size by 70%
 const Quiz = lazy(() => import('./Quiz'));
@@ -35,22 +36,8 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
   const [activeLang, setActiveLang] = useState(SUPPORTED_LANGUAGES[0]);
   const [translations, setTranslations] = useState({}); // in-memory cache: { [code]: translatedPanels }
   const [isTranslating, setIsTranslating] = useState(false);
-  const [showLangMenu, setShowLangMenu] = useState(false);
-  const langMenuRef = useRef(null);
-
-  // Close language menu on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (langMenuRef.current && !langMenuRef.current.contains(e.target)) {
-        setShowLangMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
 
   const handleSelectLanguage = async (lang) => {
-    setShowLangMenu(false);
     if (lang.code === activeLang.code) return;
 
     if (lang.code === 'en') {
@@ -349,8 +336,8 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
   if (showQuiz) {
     return (
       <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
-        {/* Reuse the same top bar so the header stays consistent */}
-        <div className="w-full flex justify-between items-start mb-8">
+        {/* Top bar with Verified Source on left and Language Switcher on right */}
+        <div className="w-full flex justify-between items-center mb-8 flex-wrap gap-4">
           <div className="inline-flex items-center gap-3 px-1.5 py-1.5 rounded-full border border-border-dark bg-surface shadow-sm">
             <div className="flex items-center gap-2.5 bg-charcoal px-4 py-1.5 rounded-full border border-border-dark/50 shadow-inner">
               <span className="relative flex h-2 w-2">
@@ -363,10 +350,20 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
               Topic: <span className="text-text-primary font-medium capitalize ml-1">{topic}</span>
             </span>
           </div>
+
+          {/* 🌍 1-Click Language Switcher in Test Yourself Section */}
+          <LanguageSwitcher
+            activeLang={activeLang}
+            onSelectLanguage={handleSelectLanguage}
+            isTranslating={isTranslating}
+          />
         </div>
         <Suspense fallback={<div className="py-24 text-center text-text-muted">Loading Quiz...</div>}>
           <Quiz
             topic={topic}
+            activeLang={activeLang}
+            onSelectLanguage={handleSelectLanguage}
+            isTranslating={isTranslating}
             onBackToComic={() => setShowQuiz(false)}
             onReset={onReset}
           />
@@ -416,82 +413,12 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
 
         {/* Right Header Actions: 1-Click Language Switcher + AI Audio Narrator + LinkedIn */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* 🌍 1-Click Language Switcher Capsule & Popover */}
-          <div ref={langMenuRef} className="relative inline-flex items-center">
-            <button
-              onClick={() => setShowLangMenu((prev) => !prev)}
-              disabled={isTranslating}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-sm cursor-pointer ${
-                activeLang.code !== 'en'
-                  ? 'bg-[#15171A] border-accent/60 text-accent shadow-[0_0_15px_rgba(232,163,61,0.15)]'
-                  : 'bg-surface border-border-dark hover:border-accent/50 text-text-primary'
-              }`}
-              title="Switch language (1-Click instant translation & native voice narration)"
-            >
-              {isTranslating ? (
-                <>
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-text-muted border-t-accent animate-spin" />
-                  <span className="text-xs font-medium text-accent">Translating...</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm leading-none">{activeLang.flag}</span>
-                  <span className="text-xs font-medium">{activeLang.nativeName}</span>
-                  <svg
-                    className={`w-3 h-3 text-text-muted transition-transform duration-200 ${
-                      showLangMenu ? 'rotate-180 text-accent' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </>
-              )}
-            </button>
-
-            {/* Language Selection Dropdown */}
-            <AnimatePresence>
-              {showLangMenu && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                  className="absolute right-0 top-10 z-40 w-52 p-2 rounded-2xl bg-[#15171A] border border-border-dark shadow-2xl backdrop-blur-md"
-                >
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold px-2 py-1 border-b border-border-dark/50 mb-1 flex items-center justify-between">
-                    <span>Explain In Language</span>
-                    <span className="text-[9px] text-accent font-normal">1-Click</span>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-0.5">
-                    {SUPPORTED_LANGUAGES.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => handleSelectLanguage(lang)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                          activeLang.code === lang.code
-                            ? 'bg-accent/20 text-accent font-semibold'
-                            : 'text-text-muted hover:bg-[#262930] hover:text-text-primary'
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className="text-base leading-none">{lang.flag}</span>
-                          <span>{lang.nativeName}</span>
-                          {lang.code !== 'en' && (
-                            <span className="text-[10px] text-text-muted/60">({lang.name})</span>
-                          )}
-                        </span>
-                        {activeLang.code === lang.code && (
-                          <span className="text-accent text-xs font-bold">✓</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* 🌍 1-Click Language Switcher */}
+          <LanguageSwitcher
+            activeLang={activeLang}
+            onSelectLanguage={handleSelectLanguage}
+            isTranslating={isTranslating}
+          />
 
           <AudioNarrationPlayer
             panels={activePanels}
