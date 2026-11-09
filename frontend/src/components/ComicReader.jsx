@@ -368,9 +368,6 @@ export default function ComicReader({ panels, topic, sourceCitation, onReset }) 
         <Suspense fallback={<div className="py-24 text-center text-text-muted">Loading Quiz...</div>}>
           <Quiz
             topic={topic}
-            activeLang={activeLang}
-            onSelectLanguage={handleSelectLanguage}
-            isTranslating={isTranslating}
             onBackToComic={() => setShowQuiz(false)}
             onReset={onReset}
           />

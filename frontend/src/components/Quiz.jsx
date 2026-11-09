@@ -1,7 +1,6 @@
 import { API_ENDPOINTS } from '../config/api';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../hooks/useLanguage';
 
 const slideVariants = {
@@ -184,15 +183,11 @@ function getReactionLine(score, total, langCode) {
 export default function Quiz({
   topic,
   activeLang: propActiveLang,
-  onSelectLanguage: propOnSelectLanguage,
-  isTranslating: propIsTranslating,
   onBackToComic,
   onReset
 }) {
   const context = useLanguage();
   const activeLang = propActiveLang || context.activeLang;
-  const onSelectLanguage = propOnSelectLanguage || context.setActiveLang;
-  const isTranslating = propIsTranslating !== undefined ? propIsTranslating : context.isTranslating;
 
   const [status, setStatus]               = useState('loading');   // 'loading' | 'ready' | 'error'
   const [questions, setQuestions]         = useState([]);
@@ -375,16 +370,7 @@ export default function Quiz({
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-2xl mx-auto flex flex-col items-center text-center gap-8 py-16"
       >
-        {/* Language selector in results */}
-        {onSelectLanguage && (
-          <div className="self-end mb-2">
-            <LanguageSwitcher
-              activeLang={activeLang}
-              onSelectLanguage={onSelectLanguage}
-              isTranslating={isTranslating || localTranslating}
-            />
-          </div>
-        )}
+
 
         <p className="text-text-muted text-xs tracking-[0.2em] uppercase font-semibold">
           {t.yourScore}
@@ -480,26 +466,16 @@ export default function Quiz({
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-10 py-4">
 
-      {/* Top Bar inside Quiz: Back link + Language Switcher */}
-      <div className="flex items-center justify-between w-full flex-wrap gap-3">
-        <button
-          onClick={onBackToComic}
-          className="text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer tracking-wide flex items-center gap-1.5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
-          {t.backToComic}
-        </button>
-
-        {onSelectLanguage && (
-          <LanguageSwitcher
-            activeLang={activeLang}
-            onSelectLanguage={onSelectLanguage}
-            isTranslating={isTranslating || localTranslating}
-          />
-        )}
-      </div>
+      {/* Back link */}
+      <button
+        onClick={onBackToComic}
+        className="self-start text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer tracking-wide flex items-center gap-1.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        {t.backToComic}
+      </button>
 
       {/* Translating banner indicator */}
       {localTranslating && (
