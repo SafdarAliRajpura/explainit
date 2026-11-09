@@ -1,6 +1,48 @@
 import { useLanguage } from '../hooks/useLanguage';
+import { SUPPORTED_LANGUAGES } from '../config/languages';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+/**
+ * Finds the highest quality native browser voice for the given language code.
+ * Prioritizes natural/neural voices and avoids mispronouncing text with an English fallback.
+ */
+function findBestVoiceForLanguage(langCode) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+  const allVoices = window.speechSynthesis.getVoices();
+  if (!allVoices || allVoices.length === 0) return null;
+
+  const targetCode = (langCode || 'en').toLowerCase();
+  const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === targetCode);
+  const keywords = langConfig?.voiceKeywords || ['Natural', 'Neural', 'Google'];
+
+  // 1. Filter voices for target language (e.g. 'es', 'es-ES', 'hi-IN', 'fr-FR', etc.)
+  const matchingVoices = allVoices.filter((v) => {
+    if (!v.lang) return false;
+    const normalized = v.lang.toLowerCase().replace('_', '-');
+    return normalized.startsWith(targetCode) || normalized.includes(`-${targetCode}`);
+  });
+
+  if (matchingVoices.length === 0) {
+    // Return null so utterance.lang is used directly without forcing a wrong voice
+    return null;
+  }
+
+  // 2. Look for preferred natural/neural voices by language keywords
+  for (const kw of keywords) {
+    const found = matchingVoices.find((v) => v.name.toLowerCase().includes(kw.toLowerCase()));
+    if (found) return found;
+  }
+
+  // 3. Look for generic high-quality markers
+  const naturalVoice = matchingVoices.find((v) =>
+    /natural|neural|premium|online/i.test(v.name)
+  );
+  if (naturalVoice) return naturalVoice;
+
+  // 4. Default to first matching native voice for that language
+  return matchingVoices[0];
+}
 
 export default function AudioNarrationPlayer({
   panels,
@@ -10,14 +52,11 @@ export default function AudioNarrationPlayer({
   setIsSpeaking,
   language: propLanguage,
 }) {
-  const { activeLang: contextLang, t } = useLanguage();
+  const { activeLang: contextLang, isTranslating, t } = useLanguage();
   const language = propLanguage || contextLang;
   const [isPaused, setIsPaused] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [autoAdvance, setAutoAdvance] = useState(true);
-  const [availableVoices, setAvailableVoices] = useState([]);
-  const [selectedVoiceName, setSelectedVoiceName] = useState('');
-  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
   const utteranceRef = useRef(null);
@@ -28,7 +67,6 @@ export default function AudioNarrationPlayer({
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (playerRef.current && !playerRef.current.contains(e.target)) {
-        setShowVoiceMenu(false);
         setShowSpeedMenu(false);
       }
     };
@@ -36,48 +74,18 @@ export default function AudioNarrationPlayer({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 1. Load system voices and pick best voice for active language
+  // Register onvoiceschanged to ensure browser voices are ready
   useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return;
-    }
-
-    const langCode = (language?.code || 'en').toLowerCase();
-
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const loadVoices = () => {
-      const allVoices = window.speechSynthesis.getVoices();
-      if (!allVoices || allVoices.length === 0) return;
-
-      // Filter voices matching the active language code prefix (e.g. 'es', 'fr', 'de', 'hi', etc.)
-      const langVoices = allVoices.filter(v => 
-        v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(langCode)
-      );
-
-      const usableVoices = langVoices.length > 0 ? langVoices : allVoices;
-      setAvailableVoices(usableVoices);
-
-      // Auto-select preferred native or natural-sounding voice
-      const preferred = langVoices.find(v => 
-        v.name.includes('Google') || 
-        v.name.includes('Natural') || 
-        v.name.includes('Neural') || 
-        v.name.includes('Samantha') || 
-        v.name.includes('Daniel') || 
-        v.name.includes('David') ||
-        v.name.includes('Microsoft')
-      );
-
-      const newVoiceName = preferred ? preferred.name : (langVoices[0]?.name || allVoices[0]?.name || '');
-      setSelectedVoiceName(newVoiceName);
+      window.speechSynthesis.getVoices();
     };
-
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
     };
-  }, [language?.code]);
+  }, []);
 
   // Clean text for optimal speech pronunciation
   const cleanSpeechText = (text) => {
@@ -91,7 +99,7 @@ export default function AudioNarrationPlayer({
       .trim();
   };
 
-  // 2. Play speech for the specified panel
+  // Play speech for the specified panel in the synchronized language
   const playSpeech = (index, forceRate = playbackRate) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
@@ -109,15 +117,19 @@ export default function AudioNarrationPlayer({
 
     utterance.rate = forceRate;
     utterance.pitch = 1.0;
-    utterance.lang = language?.code || 'en';
 
-    if (selectedVoiceName) {
-      const voice = availableVoices.find(v => v.name === selectedVoiceName)
-                 || window.speechSynthesis.getVoices().find(v => v.name === selectedVoiceName);
-      if (voice) {
-        utterance.voice = voice;
-        if (voice.lang) utterance.lang = voice.lang;
-      }
+    const langCode = (language?.code || 'en').toLowerCase();
+    const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === langCode);
+    const bcp47 = langConfig?.bcp47 || 'en-US';
+
+    // 🌍 Synchronize voice automatically with selected language
+    const bestVoice = findBestVoiceForLanguage(langCode);
+    if (bestVoice) {
+      utterance.voice = bestVoice;
+      utterance.lang = bestVoice.lang || bcp47;
+    } else {
+      utterance.voice = null;
+      utterance.lang = bcp47;
     }
 
     utterance.onstart = () => {
@@ -148,15 +160,23 @@ export default function AudioNarrationPlayer({
     window.speechSynthesis.speak(utterance);
   };
 
-  // 3. React to index or language changes when speaking is active
+  // React to panel index or language changes when speaking is active
   useEffect(() => {
+    // If language is currently fetching comic translation, pause speech until ready
+    if (isTranslating && language?.code !== 'en') {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      return;
+    }
+
     if (isSpeaking && !isPaused) {
       playSpeech(currentIndex);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, language?.code, panels[currentIndex]?.caption]);
+  }, [currentIndex, language?.code, panels[currentIndex]?.caption, isTranslating]);
 
-  // 4. Cleanup on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -179,7 +199,11 @@ export default function AudioNarrationPlayer({
       window.speechSynthesis.resume();
       setIsPaused(false);
     } else {
-      playSpeech(currentIndex);
+      setIsSpeaking(true);
+      setIsPaused(false);
+      if (!isTranslating) {
+        playSpeech(currentIndex);
+      }
     }
   };
 
@@ -272,16 +296,19 @@ export default function AudioNarrationPlayer({
           onClick={handleTogglePlay}
           className="text-xs font-medium cursor-pointer text-text-primary hover:text-accent transition-colors hidden sm:inline-block"
         >
-          {isSpeaking ? (isPaused ? t('paused') : `${t('narrating')}...`) : t('listen')}
+          {isTranslating && language?.code !== 'en'
+            ? t('translating')
+            : isSpeaking
+            ? isPaused
+              ? t('paused')
+              : `${t('narrating')}...`
+            : t('listen')}
         </button>
 
-        {/* Compact Speed Dropdown (Saves space) */}
+        {/* Compact Speed Dropdown */}
         <div className="relative border-l border-border-dark/60 pl-2 ml-0.5">
           <button
-            onClick={() => {
-              setShowSpeedMenu(prev => !prev);
-              setShowVoiceMenu(false);
-            }}
+            onClick={() => setShowSpeedMenu((prev) => !prev)}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-accent hover:bg-[#262930] cursor-pointer transition-colors"
             title={t('speed')}
           >
@@ -333,7 +360,7 @@ export default function AudioNarrationPlayer({
 
         {/* Auto-Advance Story Reel Toggle */}
         <button
-          onClick={() => setAutoAdvance(prev => !prev)}
+          onClick={() => setAutoAdvance((prev) => !prev)}
           className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${
             autoAdvance 
               ? 'border-accent/40 bg-accent/10 text-accent' 
@@ -346,61 +373,6 @@ export default function AudioNarrationPlayer({
           </svg>
           <span className="hidden md:inline">{t('reel')}</span>
         </button>
-
-        {/* Voice Selector Trigger Button */}
-        {availableVoices.length > 1 && (
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowVoiceMenu(prev => !prev);
-                setShowSpeedMenu(false);
-              }}
-              className="p-1 rounded text-text-muted hover:text-text-primary cursor-pointer transition-colors"
-              title="Select Voice"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-
-            {/* Voice Dropdown Popover */}
-            <AnimatePresence>
-              {showVoiceMenu && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                  className="absolute right-0 top-8 z-40 w-56 p-2 rounded-xl bg-[#15171A] border border-border-dark shadow-2xl backdrop-blur-md"
-                >
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold px-2 py-1 border-b border-border-dark/50 mb-1">
-                    AI Narrator Voice
-                  </div>
-                  <div className="max-h-48 overflow-y-auto space-y-1">
-                    {availableVoices.slice(0, 10).map((voice) => (
-                      <button
-                        key={voice.name}
-                        onClick={() => {
-                          setSelectedVoiceName(voice.name);
-                          setShowVoiceMenu(false);
-                          if (isSpeaking) {
-                            playSpeech(currentIndex);
-                          }
-                        }}
-                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs truncate cursor-pointer transition-colors ${
-                          selectedVoiceName === voice.name
-                            ? 'bg-accent/20 text-accent font-semibold'
-                            : 'text-text-muted hover:bg-[#262930] hover:text-text-primary'
-                        }`}
-                      >
-                        {voice.name.replace(/(Google|Microsoft|Apple|Natural)\s*/gi, '')} ({voice.lang})
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
 
         {/* Stop Button when active */}
         {isSpeaking && (
